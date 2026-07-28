@@ -5,11 +5,7 @@ on:
 
 jobs:
   test:
-    runs-on:
-      - self-hosted
-      - linux
-      - wsl
-      - research-control
+    runs-on: self-hosted
 
     steps:
       - run: hostname
