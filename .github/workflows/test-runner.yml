@@ -5,7 +5,10 @@ on:
 
 jobs:
   test:
-    runs-on: self-hosted
+    runs-on:
+      - self-hosted
+      - linux
+      - wsl
 
     steps:
       - run: hostname
