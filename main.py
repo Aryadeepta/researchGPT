@@ -190,6 +190,11 @@ class ResearchOrchestrator:
                 # FEEDBACK: Append logs to context for the next iteration to see
                 self.state["context"] += f"\nPrevious attempt logs: {logs}"
                 
+                if "Execution Error" in logs or "Stderr" in logs and "error" in logs.lower():
+                    print("Orchestrator: Error detected, asking Adversary for fix...")
+                    fix_suggestion = self.adversary.chat(f"The following execution failed with errors: {logs}. Please suggest a fix or explain the issue.")
+                    self.state["context"] += f"\nFix suggestion from Adversary: {fix_suggestion}"
+                
                 critique = self.adversary.chat(f"Analyze logs: {logs}. Has the goal '{goal}' been reached? If yes, say 'GOAL_REACHED'. If no, suggest fixes.")
                 self.state["context"] += f"\nCritique: {critique}"
                 if "GOAL_REACHED" in critique:
