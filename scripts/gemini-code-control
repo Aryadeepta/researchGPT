@@ -6,36 +6,73 @@ BASE_DIR="$HOME/gemini-code-tasks"
 WORKTREE_DIR="$HOME/gemini-worktrees"
 REPO_DIR="$(dirname "$(dirname "$(realpath "$0")")")"
 
-# Commands
 CMD=$1
 shift
 
-# Run ID Validation
+RUN_ID=""
+ISSUE_NUM=""
+ARGS_FILE=""
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --run-id) RUN_ID="$2"; shift 2 ;;
+        --issue) ISSUE_NUM="$2"; shift 2 ;;
+        --args-file) ARGS_FILE="$2"; shift 2 ;;
+        *) echo "Unknown option: $1"; exit 1 ;;
+    esac
+done
+
+if [ -z "$RUN_ID" ]; then
+    echo "Error: --run-id is required."
+    exit 1
+fi
+
 validate_run_id() {
     if [[ ! "$1" =~ ^[a-z0-9_-]+$ ]]; then
         echo "Error: Invalid run ID '$1'. Only lowercase, numbers, hyphens, underscores allowed."
         exit 1
     fi
 }
+validate_run_id "$RUN_ID"
+
+# Locking mechanism
+TASK_DIR="$BASE_DIR/$RUN_ID"
+mkdir -p "$TASK_DIR"
+LOCK_FILE="$TASK_DIR/.lock"
+
+acquire_lock() {
+    if [ -f "$LOCK_FILE" ]; then
+        echo "Error: Task '$RUN_ID' is currently locked by another operation."
+        exit 1
+    fi
+    touch "$LOCK_FILE"
+}
+
+release_lock() {
+    rm -f "$LOCK_FILE"
+}
+
+acquire_lock
+trap release_lock EXIT
+
+# Delegate to python orchestrator
+export PYTHONPATH="$REPO_DIR"
 
 case "$CMD" in
-    run)
-        # Usage: run <task-id> <issue-num>
-        TASK_ID=$1
-        ISSUE_NUM=$2
-        validate_run_id "$TASK_ID"
-        
-        # Call Python orchestrator
-        python3 -c "from src.code_orchestrator import CodeOrchestrator; o = CodeOrchestrator('$TASK_ID', '$BASE_DIR', '$WORKTREE_DIR', '$REPO_DIR'); o.initialize_worktree('$ISSUE_NUM')"
-        ;;
-    status)
-        # Implementation to follow
-        ;;
-    stop)
-        # Implementation to follow
+    run|revise|test|status|stop)
+        python3 -c "
+import os, sys
+from src.code_orchestrator import CodeOrchestrator
+try:
+    o = CodeOrchestrator('$RUN_ID', '$BASE_DIR', '$WORKTREE_DIR', '$REPO_DIR', '$ISSUE_NUM')
+    o.execute_command('$CMD', '$ARGS_FILE')
+except Exception as e:
+    print(f'Error executing command: {e}')
+    sys.exit(1)
+"
         ;;
     *)
-        echo "Usage: $0 {run|status|stop}"
+        echo "Usage: $0 {run|revise|test|status|stop} --run-id <id> --issue <issue_num> [--args-file <file>]"
         exit 1
         ;;
 esac

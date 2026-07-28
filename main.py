@@ -4,6 +4,7 @@ import re
 import json
 import sys
 import traceback
+import signal
 from datetime import datetime
 from src.agent import ResearchAgent, CodeExecutor
 from src.config import *
@@ -17,6 +18,21 @@ class ResearchOrchestrator:
         self.coder = ResearchAgent("You are a Python coder. Output runnable code only.")
         self.adversary = ResearchAgent("You are an adversarial reviewer. Critique results and check novelty.")
         self.skills = {}
+        self.stop_requested = False
+        
+        signal.signal(signal.SIGINT, self._handle_stop_signal)
+        signal.signal(signal.SIGTERM, self._handle_stop_signal)
+        
+    def _handle_stop_signal(self, signum, frame):
+        print(f"Stop signal received ({signum}). Will checkpoint and stop soon.")
+        self.stop_requested = True
+
+    def check_stop(self):
+        if self.stop_requested or (self.project_dir and os.path.exists(os.path.join(self.project_dir, ".stop_marker"))):
+            print("Cooperative stop requested. Checkpointing...")
+            self.save_state()
+            print("State saved successfully. Exiting gracefully.")
+            sys.exit(0)
 
     def load_skills(self):
         self.skills = {}
@@ -105,6 +121,7 @@ class ResearchOrchestrator:
         # 2. Execution Phase
         print("\n--- Stage: Execution ---")
         while self.state["idx"] < len(self.state["steps"]):
+            self.check_stop()
             step = self.state["steps"][self.state["idx"]]
             goal = step.get("goal", "Complete the task.")
             goal_reached = False
@@ -112,6 +129,7 @@ class ResearchOrchestrator:
             print(f"\n--- Starting Step: {step['step']} ---")
             
             while not goal_reached:
+                self.check_stop()
                 print("Coder: Executing...")
                 skill_file = step.get("skill", "code_implementation.md")
                 skill_path = os.path.join("skills", skill_file)

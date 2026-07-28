@@ -1,0 +1,300 @@
+#!/bin/bash
+set -Eeuo pipefail
+
+BASE_DIR="$HOME/research-agent-data"
+mkdir -p "$BASE_DIR"
+
+if [ $# -lt 1 ]; then
+    echo "Usage: $0 {start|resume|stop|status|list|reconcile} [options]"
+    exit 1
+fi
+
+CMD=$1
+shift
+
+validate_run_id() {
+    if [[ ! "$1" =~ ^[a-z0-9_-]+$ ]]; then
+        echo "Error: Invalid run ID '$1'. Only lowercase, numbers, hyphens, underscores allowed."
+        exit 1
+    fi
+}
+
+get_container_name() {
+    echo "research-agent-$1"
+}
+
+get_run_dir() {
+    echo "$BASE_DIR/$1"
+}
+
+acquire_lock() {
+    local run_dir=$(get_run_dir "$1")
+    local lock_file="$run_dir/.lock"
+    mkdir -p "$run_dir"
+    if [ -f "$lock_file" ]; then
+        echo "Error: Run '$1' is currently locked by another operation."
+        exit 1
+    fi
+    touch "$lock_file"
+}
+
+release_lock() {
+    local run_dir=$(get_run_dir "$1")
+    rm -f "$run_dir/.lock"
+}
+
+start_run() {
+    local run_id=""
+    local topic=""
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --run-id) run_id="$2"; shift 2 ;;
+            --topic) topic="$2"; shift 2 ;;
+            *) echo "Unknown option: $1"; exit 1 ;;
+        esac
+    done
+
+    if [ -z "$run_id" ] || [ -z "$topic" ]; then
+        echo "Usage: start --run-id <id> --topic <topic>"
+        exit 1
+    fi
+
+    validate_run_id "$run_id"
+    acquire_lock "$run_id"
+    trap 'release_lock "$run_id"' EXIT
+
+    local run_dir=$(get_run_dir "$run_id")
+    local container_name=$(get_container_name "$run_id")
+
+    if docker ps -a --format '{{.Names}}' | grep -Eq "^${container_name}\$"; then
+        echo "Error: Container $container_name already exists."
+        exit 1
+    fi
+
+    # Initialize state directory
+    rm -f "$run_dir/.stop_marker"
+    echo "running" > "$run_dir/.status"
+
+    # We mount the repo to /app, and the run_dir to /app/results
+    # This keeps the code accessible and the state persistent outside
+    # No evaluation of topic in shell, pass it as arg
+    docker run -d --name "$container_name" \
+        -v "$(pwd):/app" \
+        -v "${run_dir}:/app/results" \
+        -w /app \
+        -e GOOGLE_API_KEY="${GEMINI_API_KEY:-}" \
+        python:3.10-slim \
+        bash -c 'pip install google-genai tenacity && python main.py --field "$1"' _ "$topic" > /dev/null
+
+    echo "Started run $run_id in container $container_name"
+}
+
+resume_run() {
+    local run_id=""
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --run-id) run_id="$2"; shift 2 ;;
+            *) echo "Unknown option: $1"; exit 1 ;;
+        esac
+    done
+
+    if [ -z "$run_id" ]; then
+        echo "Usage: resume --run-id <id>"
+        exit 1
+    fi
+
+    validate_run_id "$run_id"
+    acquire_lock "$run_id"
+    trap 'release_lock "$run_id"' EXIT
+
+    local run_dir=$(get_run_dir "$run_id")
+    local container_name=$(get_container_name "$run_id")
+
+    if [ ! -d "$run_dir" ]; then
+        echo "Error: Run directory $run_dir does not exist."
+        exit 1
+    fi
+
+    rm -f "$run_dir/.stop_marker"
+    echo "running" > "$run_dir/.status"
+
+    # Find the actual project dir inside results
+    local project_dir=""
+    if [ -d "$run_dir" ]; then
+        # Check if there is a multi_agent directory inside
+        project_dir=$(find "$run_dir" -maxdepth 1 -type d -name "multi_agent_*" | head -n 1)
+    fi
+
+    if docker ps -a --format '{{.Names}}' | grep -Eq "^${container_name}\$"; then
+        docker start "$container_name" > /dev/null
+    else
+        if [ -n "$project_dir" ]; then
+            local rel_project_dir="results/$(basename "$project_dir")"
+            docker run -d --name "$container_name" \
+                -v "$(pwd):/app" \
+                -v "${run_dir}:/app/results" \
+                -w /app \
+                -e GOOGLE_API_KEY="${GEMINI_API_KEY:-}" \
+                python:3.10-slim \
+                bash -c 'pip install google-genai tenacity && python main.py --resume "$1"' _ "$rel_project_dir" > /dev/null
+        else
+            echo "Error: Could not find project dir to resume in $run_dir"
+            exit 1
+        fi
+    fi
+
+    echo "Resumed run $run_id"
+}
+
+stop_run() {
+    local run_id=""
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --run-id) run_id="$2"; shift 2 ;;
+            *) echo "Unknown option: $1"; exit 1 ;;
+        esac
+    done
+
+    if [ -z "$run_id" ]; then
+        echo "Usage: stop --run-id <id>"
+        exit 1
+    fi
+
+    validate_run_id "$run_id"
+    acquire_lock "$run_id"
+    trap 'release_lock "$run_id"' EXIT
+
+    local run_dir=$(get_run_dir "$run_id")
+    local container_name=$(get_container_name "$run_id")
+
+    # Place stop marker
+    touch "$run_dir/.stop_marker"
+    
+    if docker ps --format '{{.Names}}' | grep -Eq "^${container_name}\$"; then
+        echo "Sending SIGTERM to $container_name..."
+        docker kill --signal=SIGTERM "$container_name" > /dev/null || true
+        # Wait up to 30 seconds for graceful exit
+        local i=0
+        while [ $i -lt 30 ]; do
+            if ! docker ps --format '{{.Names}}' | grep -Eq "^${container_name}\$"; then
+                break
+            fi
+            sleep 1
+            i=$((i+1))
+        done
+        if docker ps --format '{{.Names}}' | grep -Eq "^${container_name}\$"; then
+            echo "Force stopping container..."
+            docker stop -t 0 "$container_name" > /dev/null
+        fi
+    fi
+    
+    echo "stopped" > "$run_dir/.status"
+    echo "Stopped run $run_id"
+}
+
+status_run() {
+    local run_id=""
+    local json_output=0
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --run-id) run_id="$2"; shift 2 ;;
+            --json) json_output=1; shift 1 ;;
+            *) echo "Unknown option: $1"; exit 1 ;;
+        esac
+    done
+
+    if [ -z "$run_id" ]; then
+        echo "Usage: status --run-id <id> [--json]"
+        exit 1
+    fi
+
+    validate_run_id "$run_id"
+    local run_dir=$(get_run_dir "$run_id")
+    local container_name=$(get_container_name "$run_id")
+
+    local status="unknown"
+    if [ -f "$run_dir/.status" ]; then
+        status=$(cat "$run_dir/.status")
+    fi
+
+    local docker_status="missing"
+    if docker ps -a --format '{{.Names}}' | grep -Eq "^${container_name}\$"; then
+        docker_status=$(docker inspect --format='{{.State.Status}}' "$container_name" 2>/dev/null || echo "unknown")
+    fi
+
+    if [ "$docker_status" == "exited" ] && [ "$status" == "running" ]; then
+        status="crashed or finished"
+    fi
+
+    if [ $json_output -eq 1 ]; then
+        echo "{\"run_id\": \"$run_id\", \"status\": \"$status\", \"docker_status\": \"$docker_status\"}"
+    else
+        echo "Run ID: $run_id"
+        echo "Status: $status"
+        echo "Docker: $docker_status"
+    fi
+}
+
+list_runs() {
+    if [ ! -d "$BASE_DIR" ] || [ -z "$(ls -A "$BASE_DIR")" ]; then
+        echo "No runs found."
+        exit 0
+    fi
+    
+    echo "Runs:"
+    for run_dir in "$BASE_DIR"/*; do
+        if [ -d "$run_dir" ]; then
+            local run_id=$(basename "$run_dir")
+            local status="unknown"
+            if [ -f "$run_dir/.status" ]; then
+                status=$(cat "$run_dir/.status")
+            fi
+            echo "- $run_id (Status: $status)"
+        fi
+    done
+}
+
+reconcile_runs() {
+    echo "Reconciling state..."
+    for run_dir in "$BASE_DIR"/*; do
+        if [ -d "$run_dir" ]; then
+            local run_id=$(basename "$run_dir")
+            local container_name=$(get_container_name "$run_id")
+            
+            # Remove stale locks
+            if [ -f "$run_dir/.lock" ]; then
+                # Check if the process holding the lock is still alive? We don't store PID, but we can just blindly remove it for reconcile.
+                echo "Removing stale lock for $run_id"
+                rm -f "$run_dir/.lock"
+            fi
+            
+            # Remove stop marker if status is not running? No, leave it.
+            
+            local status="unknown"
+            if [ -f "$run_dir/.status" ]; then
+                status=$(cat "$run_dir/.status")
+            fi
+            
+            local docker_status="missing"
+            if docker ps -a --format '{{.Names}}' | grep -Eq "^${container_name}\$"; then
+                docker_status=$(docker inspect --format='{{.State.Status}}' "$container_name" 2>/dev/null || echo "unknown")
+            fi
+            
+            if [ "$status" == "running" ] && [ "$docker_status" != "running" ]; then
+                echo "Updating status for $run_id to 'stopped/crashed'"
+                echo "stopped" > "$run_dir/.status"
+            fi
+        fi
+    done
+    echo "Reconciliation complete."
+}
+
+case "$CMD" in
+    start) start_run "$@" ;;
+    resume) resume_run "$@" ;;
+    stop) stop_run "$@" ;;
+    status) status_run "$@" ;;
+    list) list_runs "$@" ;;
+    reconcile) reconcile_runs "$@" ;;
+    *) echo "Unknown command: $CMD"; exit 1 ;;
+esac

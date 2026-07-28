@@ -1,0 +1,16 @@
+name: Research Resume
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'Unique Run ID'
+        required: true
+jobs:
+  resume:
+    runs-on: [self-hosted, linux, wsl, research-control]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resume Research Run
+        run: scripts/research-control resume --run-id "${{ github.event.inputs.run_id }}"
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}

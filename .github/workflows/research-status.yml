@@ -1,0 +1,14 @@
+name: Research Status
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'Unique Run ID'
+        required: true
+jobs:
+  status:
+    runs-on: [self-hosted, linux, wsl, research-control]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get Research Run Status
+        run: scripts/research-control status --run-id "${{ github.event.inputs.run_id }}"

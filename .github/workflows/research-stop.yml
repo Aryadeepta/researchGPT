@@ -1,0 +1,14 @@
+name: Research Stop
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'Unique Run ID'
+        required: true
+jobs:
+  stop:
+    runs-on: [self-hosted, linux, wsl, research-control]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Stop Research Run
+        run: scripts/research-control stop --run-id "${{ github.event.inputs.run_id }}"
