@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
 jobs:
   list:
-    runs-on: [self-hosted, linux, wsl, research-control]
+    runs-on: [self-hosted, linux, research-control]
     steps:
       - uses: actions/checkout@v4
       - name: List Research Runs

@@ -7,7 +7,7 @@ on:
         required: true
 jobs:
   resume:
-    runs-on: [self-hosted, linux, wsl, research-control]
+    runs-on: [self-hosted, linux, research-control]
     steps:
       - uses: actions/checkout@v4
       - name: Resume Research Run
