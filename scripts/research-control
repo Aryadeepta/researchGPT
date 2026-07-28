@@ -54,7 +54,8 @@ start_run() {
         esac
     done
 
-    if [ -z "$run_id" ] || [ -z "$topic" ]; then
+    # Re-verify variables are actually set before proceeding
+    if [ -z "${run_id:-}" ] || [ -z "${topic:-}" ]; then
         echo "Usage: start --run-id <id> --topic <topic>"
         exit 1
     fi
