@@ -7,8 +7,8 @@ on:
         required: true
 jobs:
   stop:
-    runs-on: [self-hosted, linux, research-control]
+    runs-on: [self-hosted, linux, wsl]
     steps:
       - uses: actions/checkout@v4
       - name: Stop Research Run
-        run: scripts/research-control stop --run-id "${{ github.event.inputs.run_id }}"
+        run: scripts/wsl stop --run-id "${{ github.event.inputs.run_id }}"

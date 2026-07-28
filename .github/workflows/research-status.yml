@@ -7,8 +7,8 @@ on:
         required: true
 jobs:
   status:
-    runs-on: [self-hosted, linux, research-control]
+    runs-on: [self-hosted, linux, wsl]
     steps:
       - uses: actions/checkout@v4
       - name: Get Research Run Status
-        run: scripts/research-control status --run-id "${{ github.event.inputs.run_id }}"
+        run: scripts/wsl status --run-id "${{ github.event.inputs.run_id }}"

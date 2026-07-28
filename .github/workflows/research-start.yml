@@ -10,10 +10,10 @@ on:
         required: true
 jobs:
   start:
-    runs-on: [self-hosted, linux, research-control]
+    runs-on: [self-hosted, linux, wsl]
     steps:
       - uses: actions/checkout@v4
       - name: Start Research Run
-        run: scripts/research-control start --run-id "${{ github.event.inputs.run_id }}" --topic "${{ github.event.inputs.topic }}"
+        run: scripts/wsl start --run-id "${{ github.event.inputs.run_id }}" --topic "${{ github.event.inputs.topic }}"
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}

@@ -9,7 +9,7 @@ jobs:
       contains(github.event.issue.labels.*.name, 'gemini-task') &&
       startsWith(github.event.comment.body, '/gemini ') &&
       (github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'COLLABORATOR')
-    runs-on: [self-hosted, linux, research-control]
+    runs-on: [self-hosted, linux, wsl]
     permissions:
       issues: write
       pull-requests: write
