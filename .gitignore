@@ -1,0 +1,12 @@
+# Git ignores
+
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.gemini/
+research.log
+results/**/*.log
+results/**/*.json
+.DS_Store

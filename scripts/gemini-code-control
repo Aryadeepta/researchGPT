@@ -1,0 +1,41 @@
+#!/bin/bash
+set -Eeuo pipefail
+
+# Configuration
+BASE_DIR="$HOME/gemini-code-tasks"
+WORKTREE_DIR="$HOME/gemini-worktrees"
+REPO_DIR="$(dirname "$(dirname "$(realpath "$0")")")"
+
+# Commands
+CMD=$1
+shift
+
+# Run ID Validation
+validate_run_id() {
+    if [[ ! "$1" =~ ^[a-z0-9_-]+$ ]]; then
+        echo "Error: Invalid run ID '$1'. Only lowercase, numbers, hyphens, underscores allowed."
+        exit 1
+    fi
+}
+
+case "$CMD" in
+    run)
+        # Usage: run <task-id> <issue-num>
+        TASK_ID=$1
+        ISSUE_NUM=$2
+        validate_run_id "$TASK_ID"
+        
+        # Call Python orchestrator
+        python3 -c "from src.code_orchestrator import CodeOrchestrator; o = CodeOrchestrator('$TASK_ID', '$BASE_DIR', '$WORKTREE_DIR', '$REPO_DIR'); o.initialize_worktree('$ISSUE_NUM')"
+        ;;
+    status)
+        # Implementation to follow
+        ;;
+    stop)
+        # Implementation to follow
+        ;;
+    *)
+        echo "Usage: $0 {run|status|stop}"
+        exit 1
+        ;;
+esac
