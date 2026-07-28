@@ -11,7 +11,14 @@ class ResearchAgent:
             raise ValueError("GOOGLE_API_KEY not set.")
         self.client = genai.Client(api_key=api_key)
         self.system_instruction = system_instruction
-        self.model_queue = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.1-flash-lite", "gemini-2.0-flash"]
+        # 5-tier downgrade strategy starting from cheapest/most efficient
+        self.model_queue = [
+            "gemini-3.1-flash-lite", 
+            "gemini-2.0-flash-lite-preview",
+            "gemini-2.0-flash-exp", 
+            "gemini-2.0-flash",
+            "gemini-3.5-flash"
+        ]
         self.current_model_idx = 0
 
     @retry(
