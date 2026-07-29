@@ -237,17 +237,39 @@ class ResearchOrchestrator:
         os.makedirs(submission_dir, exist_ok=True)
         
         # Generate LaTeX and compile
-        latex_content = self.coder.chat(f"Convert this research context to a full LaTeX paper: {self.state['context']}")
+        # Make the prompt much more comprehensive
+        latex_prompt = f"""
+        Convert the following research process and findings into a comprehensive, academic-style LaTeX paper.
+        
+        Ensure the paper includes:
+        1. An abstract summarizing the goal, method, and results.
+        2. Detailed sections for: Introduction, Methodology, Implementation Details, and Results/Conclusion.
+        3. A synthesis of all research steps and findings.
+        
+        Research Context:
+        {self.state['context']}
+        
+        Provide the full LaTeX code inside a ```latex block.
+        """
+        
+        latex_content = self.coder.chat(latex_prompt)
         latex_block = re.search(r'```latex(.*?)```', latex_content, re.DOTALL | re.IGNORECASE)
         
         if latex_block:
             with open(os.path.join(submission_dir, "paper.tex"), "w") as f:
                 f.write(latex_block.group(1).strip())
             
-            # Compile (requires pdflatex)
-            compile_cmd = "pdflatex paper.tex && pdflatex paper.tex"
-            logs = CodeExecutor.execute_shell(f"cd {submission_dir} && {compile_cmd}", self.project_dir)
+            # Compile (requires pdflatex) - check for success
+            compile_cmd = "pdflatex -interaction=nonstopmode paper.tex"
+            logs = CodeExecutor.execute_shell(f"cd {submission_dir} && {compile_cmd} && {compile_cmd}", self.project_dir)
             print(f"LaTeX Compilation: {logs}")
+            
+            if "fatal error" in logs.lower() or "error" in logs.lower():
+                print("LaTeX Compilation failed. Sending logs to Adversary for fix...")
+                fix = self.adversary.chat(f"LaTeX compilation failed with: {logs}. Please fix the LaTeX source code.")
+                # (Optional: implement automated fix loop here if needed)
+        else:
+            print("Orchestrator: No LaTeX block found in response.")
         
         # Copy artifacts to submission folder
         for f in os.listdir(self.project_dir):
