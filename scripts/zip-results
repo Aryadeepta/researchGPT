@@ -1,0 +1,21 @@
+#!/bin/bash
+set -Eeo pipefail
+
+if [ $# -lt 1 ]; then
+    echo "Usage: $0 <run-id>"
+    exit 1
+fi
+
+RUN_ID=$1
+RUN_DIR="$HOME/research-agent-data/$RUN_ID"
+
+if [ ! -d "$RUN_DIR" ]; then
+    echo "Error: Run directory $RUN_DIR does not exist."
+    exit 1
+fi
+
+# Zip the results directory
+ZIP_FILE="/tmp/results-$RUN_ID.zip"
+cd "$RUN_DIR" && zip -r "$ZIP_FILE" . > /dev/null
+
+echo "$ZIP_FILE"

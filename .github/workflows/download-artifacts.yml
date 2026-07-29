@@ -1,0 +1,22 @@
+name: Download Artifacts
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'Unique Run ID'
+        required: true
+jobs:
+  zip:
+    runs-on: [self-hosted, linux, research-control]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Zip Artifacts
+        id: zip
+        run: |
+          ZIP_PATH=$(scripts/zip-results "${{ github.event.inputs.run_id }}")
+          echo "zip_path=$ZIP_PATH" >> $GITHUB_OUTPUT
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: results-${{ github.event.inputs.run_id }}
+          path: ${{ steps.zip.outputs.zip_path }}
