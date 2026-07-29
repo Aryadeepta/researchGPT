@@ -61,9 +61,22 @@ class ResearchOrchestrator:
         # Notify completion via GitHub CLI
         topic = self.state.get("topic", "Unknown Topic")
         project_dir = self.state.get("project_dir", "Unknown Directory")
-        msg = f"Research run '{topic}' has completed successfully. Artifacts available in {project_dir}."
+        issue_num = self.state.get("issue_num")
+        
+        msg = f"Research run '{topic}' has completed successfully. Artifacts available in: `{project_dir}`."
+        
         print(f"Orchestrator: Sending completion notification: {msg}")
-        print(f"### NOTIFICATION: {msg}")
+        
+        # If we have an issue context, post the comment
+        if issue_num:
+            try:
+                # Use the new post-logs script
+                subprocess.run(["scripts/post-logs", str(issue_num), msg], check=True)
+                print("Orchestrator: Notification posted to issue.")
+            except Exception as e:
+                print(f"Orchestrator: Notification failed: {e}")
+        else:
+            print(f"### NOTIFICATION: {msg}")
 
     def run(self, field=None, resume=False, interactive=False):
         if resume:
@@ -264,6 +277,7 @@ def main():
         parser = argparse.ArgumentParser()
         parser.add_argument("--field", nargs='+', help="Research field(s)")
         parser.add_argument("--resume", help="Resume from project directory")
+        parser.add_argument("--issue", help="Associated Issue Number")
         parser.add_argument("--interactive", action="store_true", help="Enable interactive topic selection")
         args = parser.parse_args()
         print(f"DEBUG: Parsed args: {args}")
@@ -276,6 +290,7 @@ def main():
         elif args.field:
             field = " ".join(args.field)
             orch = ResearchOrchestrator()
+            orch.state["issue_num"] = args.issue
             orch.run(field=field, resume=False, interactive=args.interactive)
         else:
             print("Error: Provide --field or --resume")

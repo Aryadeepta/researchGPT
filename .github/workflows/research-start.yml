@@ -8,6 +8,9 @@ on:
       topic:
         description: 'Research Topic'
         required: true
+      issue_num:
+        description: 'Issue Number (optional, for notifications)'
+        required: false
 jobs:
   start:
     runs-on: [self-hosted, linux, research-control]
@@ -22,11 +25,12 @@ jobs:
           GEMINI_CLI_TRUST_WORKSPACE: true
       - name: Start Research Run
         run: |
-          scripts/research-control start --run-id "${{ github.event.inputs.run_id }}" --topic "${{ github.event.inputs.topic }}" || {
+          scripts/research-control start --run-id "${{ github.event.inputs.run_id }}" --topic "${{ github.event.inputs.topic }}" ${{ github.event.inputs.issue_num != '' && format('--issue {0}', github.event.inputs.issue_num) || '' }} || {
             scripts/research-control reconcile
             exit 1
           }
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GEMINI_CLI_APPROVAL_MODE: yolo
           GEMINI_CLI_TRUST_WORKSPACE: true

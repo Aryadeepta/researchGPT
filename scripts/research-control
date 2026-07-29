@@ -46,10 +46,12 @@ release_lock() {
 start_run() {
     local run_id=""
     local topic=""
+    local issue_num=""
     while [[ $# -gt 0 ]]; do
         case $1 in
             --run-id) run_id="$2"; shift 2 ;;
             --topic) topic="$2"; shift 2 ;;
+            --issue) issue_num="$2"; shift 2 ;;
             *) echo "Unknown option: $1"; exit 1 ;;
         esac
     done
@@ -79,6 +81,11 @@ start_run() {
     rm -f "$run_dir/.stop_marker"
     echo "running" > "$run_dir/.status"
 
+    local issue_arg=""
+    if [ -n "$issue_num" ]; then
+        issue_arg="--issue $issue_num"
+    fi
+
     docker run -d --user "$(id -u):$(id -g)" -e HOME=/tmp -e GEMINI_CLI_APPROVAL_MODE=yolo -e GEMINI_CLI_TRUST_WORKSPACE=true --name "$container_name" \
         -v "$(pwd):/app" \
         -v "${run_dir}:/app/results" \
@@ -86,7 +93,7 @@ start_run() {
         -e GOOGLE_API_KEY="${GEMINI_API_KEY:-}" \
         -e GITHUB_TOKEN="${GITHUB_TOKEN:-}" \
         python:3.10-slim \
-        bash -c 'pip install google-genai tenacity && python main.py --field "$1"' _ "$topic" > /dev/null
+        bash -c "pip install google-genai tenacity && python main.py --field \"\$1\" $issue_arg" _ "$topic" > /dev/null
 
     echo "Started run $run_id in container $container_name"
 }
