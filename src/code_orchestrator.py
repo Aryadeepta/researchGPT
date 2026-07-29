@@ -70,8 +70,9 @@ class CodeOrchestrator:
         # -p/--prompt for headless
         # --approval-mode=yolo for auto-approval
         # --skip-trust to bypass trust check
+        # --include-directories to allow access to the worktree
         try:
-            subprocess.run(["gemini", "-p", prompt_content, "--approval-mode=yolo", "--skip-trust"], 
+            subprocess.run(["gemini", "-p", prompt_content, "--approval-mode=yolo", "--skip-trust", "--include-directories", self.worktree_path], 
                            cwd=self.worktree_path, env=env, check=True, timeout=300)
             print("Agent run completed.")
         except subprocess.TimeoutExpired:
