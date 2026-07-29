@@ -72,8 +72,11 @@ class CodeOrchestrator:
         # --skip-trust to bypass trust check
         try:
             subprocess.run(["gemini", "-p", prompt_content, "--approval-mode=yolo", "--skip-trust"], 
-                           cwd=self.worktree_path, env=env, check=True)
+                           cwd=self.worktree_path, env=env, check=True, timeout=300)
             print("Agent run completed.")
+        except subprocess.TimeoutExpired:
+            print("Error: Gemini CLI timed out after 300 seconds.")
+            raise
         except FileNotFoundError:
             # Fallback if 'gemini' is not in PATH
             print("Warning: 'gemini' executable not found in PATH, simulating run.")
