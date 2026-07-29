@@ -249,12 +249,15 @@ class ResearchOrchestrator:
         print(f"\nFinal submission package ready in: {submission_dir}")
         
         # QA Loop
-        rag = ProjectRAG(self.project_dir)
-        print("You can now ask questions about this research. Type 'exit' to quit.")
-        while True:
-            question = input("\nQuestion: ")
-            if question.lower() == 'exit': break
-            print("Answer:", rag.query(self.adversary, question))
+        if interactive:
+            rag = ProjectRAG(self.project_dir)
+            print("You can now ask questions about this research. Type 'exit' to quit.")
+            while True:
+                question = input("\nQuestion: ")
+                if question.lower() == 'exit': break
+                print("Answer:", rag.query(self.adversary, question))
+        else:
+            print("\nNon-interactive mode: Skipping QA loop.")
 def main():
     print(f"DEBUG: Starting main.py with args: {sys.argv}")
     try:
