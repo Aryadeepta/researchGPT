@@ -1,0 +1,25 @@
+#!/bin/bash
+set -Eeo pipefail
+
+# Read prompt from argument or stdin
+PROMPT_FILE="/tmp/gemini_chat_prompt.txt"
+
+if [ -t 0 ]; then
+    # stdin is a terminal, so we take the first argument
+    if [ $# -eq 0 ]; then
+        echo "Usage: $0 \"prompt\" OR echo \"prompt\" | $0"
+        exit 1
+    fi
+    echo "$1" > "$PROMPT_FILE"
+else
+    # stdin is a pipe
+    cat > "$PROMPT_FILE"
+fi
+
+python3 -c "
+from src.agent import ResearchAgent
+with open('$PROMPT_FILE', 'r') as f:
+    prompt = f.read()
+agent = ResearchAgent('You are a helpful assistant.')
+print(agent.chat(prompt))
+"
