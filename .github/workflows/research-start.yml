@@ -13,7 +13,16 @@ jobs:
     runs-on: [self-hosted, linux, research-control]
     steps:
       - uses: actions/checkout@v4
+      - name: Auto-Diagnose Failure
+        if: failure()
+        run: echo "Workflow failed. Analyzing crash logs..." | scripts/gemini-chat
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       - name: Start Research Run
-        run: scripts/research-control start --run-id "${{ github.event.inputs.run_id }}" --topic "${{ github.event.inputs.topic }}"
+        run: |
+          scripts/research-control start --run-id "${{ github.event.inputs.run_id }}" --topic "${{ github.event.inputs.topic }}" || {
+            scripts/research-control reconcile
+            exit 1
+          }
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
