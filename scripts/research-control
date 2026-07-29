@@ -68,9 +68,14 @@ start_run() {
     local run_dir=$(get_run_dir "$run_id")
     local container_name=$(get_container_name "$run_id")
 
-    if docker ps -a --format '{{.Names}}' | grep -Eq "^${container_name}\$"; then
-        echo "Error: Container $container_name already exists."
-        exit 1
+    if docker ps -a --format '{{.Names}}' | grep -Eq "^${container_name}$"; then
+        if [ "$(docker inspect -f '{{.State.Running}}' "$container_name" 2>/dev/null)" == "true" ]; then
+            echo "Error: Container $container_name is already running."
+            exit 1
+        else
+            echo "Removing existing container $container_name..."
+            docker rm "$container_name" > /dev/null
+        fi
     fi
 
     # Initialize state directory
