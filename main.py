@@ -277,9 +277,13 @@ class ResearchOrchestrator:
                 import shutil
                 shutil.copy2(os.path.join(self.project_dir, f), submission_dir)
         
-        # Ensure the generated PDF is moved from submission directory if it was compiled there
+        # Ensure the generated PDF and LaTeX are moved to the main project directory for top-level access
         if os.path.exists(os.path.join(submission_dir, "paper.pdf")):
-             print("LaTeX PDF successfully generated in submission folder.")
+            shutil.copy2(os.path.join(submission_dir, "paper.pdf"), os.path.join(self.project_dir, "paper.pdf"))
+            print("LaTeX PDF successfully copied to project root.")
+        if os.path.exists(os.path.join(submission_dir, "paper.tex")):
+            shutil.copy2(os.path.join(submission_dir, "paper.tex"), os.path.join(self.project_dir, "paper.tex"))
+            print("LaTeX source successfully copied to project root.")
 
         print(f"\nFinal submission package ready in: {submission_dir}")
         
