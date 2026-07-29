@@ -63,7 +63,6 @@ start_run() {
     validate_run_id "$run_id"
     acquire_lock "$run_id"
     trap 'release_lock "$run_id"' EXIT
-    find /app -name "__pycache__" -exec rm -rf {} + 2>/dev/null
 
     local run_dir=$(get_run_dir "$run_id")
     local container_name=$(get_container_name "$run_id")
@@ -113,7 +112,6 @@ resume_run() {
     validate_run_id "$run_id"
     acquire_lock "$run_id"
     trap 'release_lock "$run_id"' EXIT
-    find /app -name "__pycache__" -exec rm -rf {} + 2>/dev/null
 
     local run_dir=$(get_run_dir "$run_id")
     local container_name=$(get_container_name "$run_id")
@@ -171,7 +169,6 @@ stop_run() {
     validate_run_id "$run_id"
     acquire_lock "$run_id"
     trap 'release_lock "$run_id"' EXIT
-    find /app -name "__pycache__" -exec rm -rf {} + 2>/dev/null
 
     local run_dir=$(get_run_dir "$run_id")
     local container_name=$(get_container_name "$run_id")
