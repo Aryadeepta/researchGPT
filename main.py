@@ -259,6 +259,10 @@ class ResearchOrchestrator:
             with open(os.path.join(submission_dir, "paper.tex"), "w") as f:
                 f.write(latex_block.group(1).strip())
             
+            # Ensure LaTeX is installed
+            print("Orchestrator: Checking for LaTeX installation...")
+            CodeExecutor.execute_shell("apt-get update && apt-get install -y texlive-full", self.project_dir)
+            
             # Compile (requires pdflatex) - check for success
             compile_cmd = "pdflatex -interaction=nonstopmode paper.tex"
             logs = CodeExecutor.execute_shell(f"cd {submission_dir} && {compile_cmd} && {compile_cmd}", self.project_dir)
