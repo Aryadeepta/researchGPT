@@ -45,6 +45,7 @@ class ResearchOrchestrator:
         return "\n".join([f"Skill File: {f}\nContent: {c}\n" for f, c in self.skills.items()])
 
     def save_state(self):
+        self.state["project_dir"] = self.project_dir
         with open(os.path.join(self.project_dir, "state.json"), "w") as f:
             json.dump(self.state, f)
 
@@ -55,6 +56,14 @@ class ResearchOrchestrator:
             self.state = json.load(f)
             self.project_dir = project_dir
         self.load_skills()
+
+    def _notify_completion(self):
+        # Notify completion via GitHub CLI
+        topic = self.state.get("topic", "Unknown Topic")
+        project_dir = self.state.get("project_dir", "Unknown Directory")
+        msg = f"Research run '{topic}' has completed successfully. Artifacts available in {project_dir}."
+        print(f"Orchestrator: Sending completion notification: {msg}")
+        print(f"### NOTIFICATION: {msg}")
 
     def run(self, field=None, resume=False, interactive=False):
         if resume:
@@ -202,13 +211,16 @@ class ResearchOrchestrator:
                     print(f"Adversary: Step '{step['step']}' validated.")
                 else:
                     print("Adversary: Step not reached, re-executing...")
-            
             self.state["idx"] += 1
             self.save_state()
 
-        # 3. Finalization & QA
-        print("\n--- Pipeline complete. Finalizing Submission Package ---")
-        submission_dir = os.path.join(self.project_dir, "submission")
+            # 3. Finalization & QA
+            print("\n--- Pipeline complete. Finalizing Submission Package ---")
+            self._notify_completion()
+
+            submission_dir = os.path.join(self.project_dir, "submission")
+            # ... (rest of the method)
+
         os.makedirs(submission_dir, exist_ok=True)
         
         # Generate LaTeX and compile
