@@ -54,8 +54,7 @@ start_run() {
         esac
     done
 
-    # Re-verify variables are actually set before proceeding
-    if [ -z "${run_id:-}" ] || [ -z "${topic:-}" ]; then
+    if [ -z "$run_id" ] || [ -z "$topic" ]; then
         echo "Usage: start --run-id <id> --topic <topic>"
         exit 1
     fi
@@ -77,18 +76,15 @@ start_run() {
         fi
     fi
 
-    # Initialize state directory
     rm -f "$run_dir/.stop_marker"
     echo "running" > "$run_dir/.status"
 
-    # We mount the repo to /app, and the run_dir to /app/results
-    # This keeps the code accessible and the state persistent outside
-    # No evaluation of topic in shell, pass it as arg
     docker run -d --user "$(id -u):$(id -g)" -e HOME=/tmp -e GEMINI_CLI_APPROVAL_MODE=yolo -e GEMINI_CLI_TRUST_WORKSPACE=true --name "$container_name" \
         -v "$(pwd):/app" \
         -v "${run_dir}:/app/results" \
         -w /app \
         -e GOOGLE_API_KEY="${GEMINI_API_KEY:-}" \
+        -e GITHUB_TOKEN="${GITHUB_TOKEN:-}" \
         python:3.10-slim \
         bash -c 'pip install google-genai tenacity && python main.py --field "$1"' _ "$topic" > /dev/null
 
@@ -124,14 +120,12 @@ resume_run() {
     rm -f "$run_dir/.stop_marker"
     echo "running" > "$run_dir/.status"
 
-    # Find the actual project dir inside results
     local project_dir=""
     if [ -d "$run_dir" ]; then
-        # Check if there is a multi_agent directory inside
         project_dir=$(find "$run_dir" -maxdepth 1 -type d -name "multi_agent_*" | head -n 1)
     fi
 
-    if docker ps -a --format '{{.Names}}' | grep -Eq "^${container_name}\$"; then
+    if docker ps -a --format '{{.Names}}' | grep -Eq "^${container_name}$"; then
         docker start "$container_name" > /dev/null
     else
         if [ -n "$project_dir" ]; then
@@ -141,6 +135,7 @@ resume_run() {
                 -v "${run_dir}:/app/results" \
                 -w /app \
                 -e GOOGLE_API_KEY="${GEMINI_API_KEY:-}" \
+                -e GITHUB_TOKEN="${GITHUB_TOKEN:-}" \
                 python:3.10-slim \
                 bash -c 'pip install google-genai tenacity && python main.py --resume "$1"' _ "$rel_project_dir" > /dev/null
         else
@@ -173,22 +168,20 @@ stop_run() {
     local run_dir=$(get_run_dir "$run_id")
     local container_name=$(get_container_name "$run_id")
 
-    # Place stop marker
     touch "$run_dir/.stop_marker"
     
-    if docker ps --format '{{.Names}}' | grep -Eq "^${container_name}\$"; then
+    if docker ps --format '{{.Names}}' | grep -Eq "^${container_name}$"; then
         echo "Sending SIGTERM to $container_name..."
         docker kill --signal=SIGTERM "$container_name" > /dev/null || true
-        # Wait up to 30 seconds for graceful exit
         local i=0
         while [ $i -lt 30 ]; do
-            if ! docker ps --format '{{.Names}}' | grep -Eq "^${container_name}\$"; then
+            if ! docker ps --format '{{.Names}}' | grep -Eq "^${container_name}$"; then
                 break
             fi
             sleep 1
             i=$((i+1))
         done
-        if docker ps --format '{{.Names}}' | grep -Eq "^${container_name}\$"; then
+        if docker ps --format '{{.Names}}' | grep -Eq "^${container_name}$"; then
             echo "Force stopping container..."
             docker stop -t 0 "$container_name" > /dev/null
         fi
@@ -224,7 +217,7 @@ status_run() {
     fi
 
     local docker_status="missing"
-    if docker ps -a --format '{{.Names}}' | grep -Eq "^${container_name}\$"; then
+    if docker ps -a --format '{{.Names}}' | grep -Eq "^${container_name}$"; then
         docker_status=$(docker inspect --format='{{.State.Status}}' "$container_name" 2>/dev/null || echo "unknown")
     fi
 
@@ -267,14 +260,10 @@ reconcile_runs() {
             local run_id=$(basename "$run_dir")
             local container_name=$(get_container_name "$run_id")
             
-            # Remove stale locks
             if [ -f "$run_dir/.lock" ]; then
-                # Check if the process holding the lock is still alive? We don't store PID, but we can just blindly remove it for reconcile.
                 echo "Removing stale lock for $run_id"
                 rm -f "$run_dir/.lock"
             fi
-            
-            # Remove stop marker if status is not running? No, leave it.
             
             local status="unknown"
             if [ -f "$run_dir/.status" ]; then
@@ -282,13 +271,20 @@ reconcile_runs() {
             fi
             
             local docker_status="missing"
-            if docker ps -a --format '{{.Names}}' | grep -Eq "^${container_name}\$"; then
+            if docker ps -a --format '{{.Names}}' | grep -Eq "^${container_name}$"; then
                 docker_status=$(docker inspect --format='{{.State.Status}}' "$container_name" 2>/dev/null || echo "unknown")
             fi
             
             if [ "$status" == "running" ] && [ "$docker_status" != "running" ]; then
                 echo "Updating status for $run_id to 'stopped/crashed'"
                 echo "stopped" > "$run_dir/.status"
+                
+                docker logs --tail 50 "$container_name" > "$run_dir/crash_logs.txt" 2>&1
+                
+                if grep -iqE "error|exception|critical" "$run_dir/crash_logs.txt"; then
+                    echo "Container $container_name crashed. Analyzing logs..."
+                    cat "$run_dir/crash_logs.txt" | scripts/gemini-chat "The research run $run_id crashed. Here are the last 50 lines of logs:\n\nPlease diagnose the crash and suggest a fix."
+                fi
             fi
         fi
     done
