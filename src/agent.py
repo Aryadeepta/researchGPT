@@ -70,12 +70,12 @@ class CodeExecutor:
         with open(temp_file_path, "w") as f:
             f.write(code_str)
         try:
-            # Run using the virtual environment's python
-            venv_python = os.path.join(os.getcwd(), "venv", "bin", "python3")
+            # Run using the system python3
+            python_cmd = "python3"
             # Increase timeout for complex calculations
             # Run in the project directory using the relative filename
             result = subprocess.run(
-                [venv_python, temp_file_name], 
+                [python_cmd, temp_file_name], 
                 capture_output=True, text=True, timeout=60,
                 cwd=project_dir
             )
@@ -86,12 +86,11 @@ class CodeExecutor:
     @staticmethod
     def execute_shell(cmd_str, project_dir):
         try:
-            # Specifically handle pip installs by running them in the venv
+            # Specifically handle pip installs by running them with system pip
             if "pip install" in cmd_str:
-                venv_pip = os.path.join(os.getcwd(), "venv", "bin", "pip")
                 # Remove any potential existing path in the command string that might cause duplication
                 clean_cmd = cmd_str.replace("pip install", "").strip()
-                cmd_str = f"{venv_pip} install {clean_cmd}"
+                cmd_str = f"pip install {clean_cmd}"
             
             # Run in the project directory
             result = subprocess.run(
