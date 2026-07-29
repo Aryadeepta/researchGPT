@@ -18,6 +18,8 @@ jobs:
         run: echo "Workflow failed. Analyzing crash logs..." | scripts/gemini-chat
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_CLI_APPROVAL_MODE: yolo
+          GEMINI_CLI_TRUST_WORKSPACE: true
       - name: Start Research Run
         run: |
           scripts/research-control start --run-id "${{ github.event.inputs.run_id }}" --topic "${{ github.event.inputs.topic }}" || {
@@ -26,3 +28,5 @@ jobs:
           }
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_CLI_APPROVAL_MODE: yolo
+          GEMINI_CLI_TRUST_WORKSPACE: true

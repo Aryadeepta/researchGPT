@@ -14,3 +14,5 @@ jobs:
         run: scripts/research-control resume --run-id "${{ github.event.inputs.run_id }}"
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_CLI_APPROVAL_MODE: yolo
+          GEMINI_CLI_TRUST_WORKSPACE: true

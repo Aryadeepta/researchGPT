@@ -73,3 +73,5 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GEMINI_CLI_APPROVAL_MODE: yolo
+          GEMINI_CLI_TRUST_WORKSPACE: true
