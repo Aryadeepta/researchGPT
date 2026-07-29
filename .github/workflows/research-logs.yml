@@ -1,0 +1,14 @@
+name: Research Logs
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'Unique Run ID'
+        required: true
+jobs:
+  logs:
+    runs-on: [self-hosted, linux, research-control]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get Research Logs
+        run: scripts/get-logs "${{ github.event.inputs.run_id }}"

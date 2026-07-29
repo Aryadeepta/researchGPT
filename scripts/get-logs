@@ -1,0 +1,27 @@
+#!/bin/bash
+set -Eeo pipefail
+
+if [ $# -lt 1 ]; then
+    echo "Usage: $0 <run-id>"
+    exit 1
+fi
+
+RUN_ID=$1
+RUN_DIR="$HOME/research-agent-data/$RUN_ID"
+CONTAINER_NAME="research-agent-$RUN_ID"
+
+if [ ! -d "$RUN_DIR" ]; then
+    echo "Error: Run directory $RUN_DIR does not exist."
+    exit 1
+fi
+
+echo "--- Last 50 lines of logs for run: $RUN_ID ---"
+if docker ps -a --format '{{.Names}}' | grep -Eq "^${CONTAINER_NAME}$"; then
+    docker logs --tail 50 "$CONTAINER_NAME"
+else
+    if [ -f "$RUN_DIR/crash_logs.txt" ]; then
+        cat "$RUN_DIR/crash_logs.txt"
+    else
+        echo "No logs found (container missing and no crash logs)."
+    fi
+fi
