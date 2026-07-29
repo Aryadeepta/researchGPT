@@ -93,7 +93,7 @@ start_run() {
         -e GOOGLE_API_KEY="${GEMINI_API_KEY:-}" \
         -e GITHUB_TOKEN="${GITHUB_TOKEN:-}" \
         python:3.10-slim \
-        bash -c "pip install google-genai tenacity && python main.py --field \"\$1\" $issue_arg" _ "$topic" > /dev/null
+        bash -c "pip install google-genai tenacity && python main.py --field \"\$1\" $issue_arg" _ "$topic"
 
     echo "Started run $run_id in container $container_name"
 }
@@ -144,7 +144,8 @@ resume_run() {
                 -e GOOGLE_API_KEY="${GEMINI_API_KEY:-}" \
                 -e GITHUB_TOKEN="${GITHUB_TOKEN:-}" \
                 python:3.10-slim \
-                bash -c 'pip install google-genai tenacity && python main.py --resume "$1"' _ "$rel_project_dir" > /dev/null
+                bash -c 'pip install google-genai tenacity && python main.py --resume "$1"' _ "$rel_project_dir"
+
         else
             echo "Error: Could not find project dir to resume in $run_dir"
             exit 1
