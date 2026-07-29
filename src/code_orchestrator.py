@@ -30,7 +30,11 @@ class CodeOrchestrator:
 
     def initialize_worktree(self):
         if os.path.exists(self.worktree_path):
-            return # Already initialized
+            # If the directory exists but isn't a git repo, fix it
+            if not os.path.exists(os.path.join(self.worktree_path, ".git")):
+                shutil.rmtree(self.worktree_path)
+            else:
+                return
 
         # Check if branch exists
         res = subprocess.run(["git", "show-ref", "--verify", f"refs/heads/{self.branch_name}"], cwd=self.repo_dir, capture_output=True)
