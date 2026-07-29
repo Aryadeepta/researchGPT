@@ -1,5 +1,5 @@
 #!/bin/bash
-set -Eeuo pipefail
+set -Eeo pipefail
 
 BASE_DIR="$HOME/research-agent-data"
 mkdir -p "$BASE_DIR"
