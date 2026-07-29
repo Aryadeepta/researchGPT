@@ -62,11 +62,12 @@ class CodeOrchestrator:
         with open(prompt_file, "r") as f:
             prompt_content = f.read()
 
-        # Assuming the agent executable is available as 'gemini'
-        # Safely pass prompt via file to avoid shell injection
-        # e.g., gemini --headless --prompt-file <prompt_file>
+        # Correct flags based on help output:
+        # -p/--prompt for headless
+        # --approval-mode=yolo for auto-approval
+        # --skip-trust to bypass trust check
         try:
-            subprocess.run(["gemini", "--headless", "--prompt-file", prompt_file], 
+            subprocess.run(["gemini", "-p", prompt_content, "--approval-mode=yolo", "--skip-trust"], 
                            cwd=self.worktree_path, env=env, check=True)
             print("Agent run completed.")
         except FileNotFoundError:
