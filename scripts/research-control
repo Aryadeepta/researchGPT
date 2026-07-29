@@ -80,7 +80,7 @@ start_run() {
     # We mount the repo to /app, and the run_dir to /app/results
     # This keeps the code accessible and the state persistent outside
     # No evaluation of topic in shell, pass it as arg
-    docker run -d --user "$(id -u):$(id -g)" --name "$container_name" \
+    docker run -d --user "$(id -u):$(id -g)" -e HOME=/tmp -e GEMINI_CLI_APPROVAL_MODE=yolo -e GEMINI_CLI_TRUST_WORKSPACE=true --name "$container_name" \
         -v "$(pwd):/app" \
         -v "${run_dir}:/app/results" \
         -w /app \
@@ -133,7 +133,7 @@ resume_run() {
     else
         if [ -n "$project_dir" ]; then
             local rel_project_dir="results/$(basename "$project_dir")"
-            docker run -d --user "$(id -u):$(id -g)" --name "$container_name" \
+            docker run -d --user "$(id -u):$(id -g)" -e HOME=/tmp -e GEMINI_CLI_APPROVAL_MODE=yolo -e GEMINI_CLI_TRUST_WORKSPACE=true --name "$container_name" \
                 -v "$(pwd):/app" \
                 -v "${run_dir}:/app/results" \
                 -w /app \
