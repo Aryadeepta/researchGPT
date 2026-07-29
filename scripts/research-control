@@ -63,6 +63,7 @@ start_run() {
     validate_run_id "$run_id"
     acquire_lock "$run_id"
     trap 'release_lock "$run_id"' EXIT
+    find /app -name "__pycache__" -exec rm -rf {} + 2>/dev/null
 
     local run_dir=$(get_run_dir "$run_id")
     local container_name=$(get_container_name "$run_id")
@@ -79,7 +80,7 @@ start_run() {
     # We mount the repo to /app, and the run_dir to /app/results
     # This keeps the code accessible and the state persistent outside
     # No evaluation of topic in shell, pass it as arg
-    docker run -d --name "$container_name" \
+    docker run -d --user "$(id -u):$(id -g)" --name "$container_name" \
         -v "$(pwd):/app" \
         -v "${run_dir}:/app/results" \
         -w /app \
@@ -107,6 +108,7 @@ resume_run() {
     validate_run_id "$run_id"
     acquire_lock "$run_id"
     trap 'release_lock "$run_id"' EXIT
+    find /app -name "__pycache__" -exec rm -rf {} + 2>/dev/null
 
     local run_dir=$(get_run_dir "$run_id")
     local container_name=$(get_container_name "$run_id")
@@ -131,7 +133,7 @@ resume_run() {
     else
         if [ -n "$project_dir" ]; then
             local rel_project_dir="results/$(basename "$project_dir")"
-            docker run -d --name "$container_name" \
+            docker run -d --user "$(id -u):$(id -g)" --name "$container_name" \
                 -v "$(pwd):/app" \
                 -v "${run_dir}:/app/results" \
                 -w /app \
@@ -164,6 +166,7 @@ stop_run() {
     validate_run_id "$run_id"
     acquire_lock "$run_id"
     trap 'release_lock "$run_id"' EXIT
+    find /app -name "__pycache__" -exec rm -rf {} + 2>/dev/null
 
     local run_dir=$(get_run_dir "$run_id")
     local container_name=$(get_container_name "$run_id")
