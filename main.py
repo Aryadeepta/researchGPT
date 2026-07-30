@@ -236,13 +236,21 @@ class ResearchOrchestrator:
         os.makedirs(submission_dir, exist_ok=True)
 
         # Generate Paper
-        print("\n--- Stage: Formal Paper Drafting ---")
-        paper_content = self.coder.chat(PAPER_DRAFTING_PROMPT.format(research_context=self.state['context']))
-        with open(os.path.join(submission_dir, "paper.md"), "w") as f:
-            f.write(paper_content.strip())
+        print("\n--- Stage: Formal Paper Drafting (LaTeX) ---")
+        paper_output = self.coder.chat(PAPER_DRAFTING_PROMPT.format(research_context=self.state['context']))
         
-        # Ensure the generated Markdown is moved to the main project directory for top-level access
-        shutil.copy2(os.path.join(submission_dir, "paper.md"), os.path.join(self.project_dir, "paper.md"))
+        draft_dir = os.path.join(self.project_dir, "paper_draft")
+        os.makedirs(draft_dir, exist_ok=True)
+        
+        # Parse the output which has FILE: [name] markers
+        files = re.split(r'FILE:\s*\[(.*?)\]', paper_output)
+        for i in range(1, len(files), 2):
+            filename = files[i]
+            content = files[i+1].strip()
+            with open(os.path.join(draft_dir, filename), "w") as f:
+                f.write(content)
+        
+        print(f"LaTeX paper draft generated in: {draft_dir}")
         print("Markdown paper successfully generated and copied to project root.")
         
         print(f"\nFinal submission package ready in: {submission_dir}")

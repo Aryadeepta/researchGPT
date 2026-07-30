@@ -61,16 +61,19 @@ Return 'VALID' if it is novel and valuable, or 'INVALID' followed by a detailed 
 """
 
 PAPER_DRAFTING_PROMPT = """
-Write a comprehensive, full-length academic research paper based on the proposal, methodology, and results provided.
+Write a comprehensive, professional-grade academic research paper in LaTeX format.
 
 Requirements:
-- Structure: Abstract, Introduction, Literature Review, Methodology (with detailed LaTeX math equations), Results (thorough analysis of code/simulation), Discussion, Conclusion, References.
-- Depth: Provide deep technical explanations, extensive context, and robust argumentation. Do not summarize or cut corners.
-- Length: Ensure the paper is substantial and professional, suitable for submission to a reputable venue.
+- Project Structure: Create a main.tex file that uses \input{} to include modular files for: 
+    abstract.tex, introduction.tex, literature_review.tex, methodology.tex, results.tex, discussion.tex, conclusion.tex, references.bib.
+- Formatting: Use the standard 'article' document class (or similar professional template). Ensure all LaTeX commands for math, figures, and citations are syntactically correct.
+- Depth & Length: This is a discovery of high magnitude. Ensure the content is exhaustive, professional, and structured for a submission to a top-tier journal. Total content should be substantial.
 - Context:
 {research_context}
 
-Write the full paper in Markdown format.
+Return the content for each file separately in the following format:
+FILE: [filename.tex]
+[Content of the file]
 """
 
 PLANNING_AND_CRITIQUE_PROMPT = """
