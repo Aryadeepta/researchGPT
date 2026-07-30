@@ -236,16 +236,8 @@ class ResearchOrchestrator:
         os.makedirs(submission_dir, exist_ok=True)
 
         # Generate Paper
-        paper_prompt = f"""
-        Convert the following research process and findings into a comprehensive, academic-style paper.
-
-        Research Context:
-        {self.state['context']}
-
-        Provide the full paper in well-structured Markdown format, with LaTeX-style math for equations.
-        """
-
-        paper_content = self.coder.chat(paper_prompt)
+        print("\n--- Stage: Formal Paper Drafting ---")
+        paper_content = self.coder.chat(PAPER_DRAFTING_PROMPT.format(research_context=self.state['context']))
         with open(os.path.join(submission_dir, "paper.md"), "w") as f:
             f.write(paper_content.strip())
         

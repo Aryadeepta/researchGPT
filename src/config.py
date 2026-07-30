@@ -61,8 +61,16 @@ Return 'VALID' if it is novel and valuable, or 'INVALID' followed by a detailed 
 """
 
 PAPER_DRAFTING_PROMPT = """
-Using the final refined proposal, methodology, and verified results, write a formal research paper draft.
-Include sections: Title, Abstract, Introduction, Methodology (math), Results (code simulation), Discussion, Conclusion.
+Write a comprehensive, full-length academic research paper based on the proposal, methodology, and results provided.
+
+Requirements:
+- Structure: Abstract, Introduction, Literature Review, Methodology (with detailed LaTeX math equations), Results (thorough analysis of code/simulation), Discussion, Conclusion, References.
+- Depth: Provide deep technical explanations, extensive context, and robust argumentation. Do not summarize or cut corners.
+- Length: Ensure the paper is substantial and professional, suitable for submission to a reputable venue.
+- Context:
+{research_context}
+
+Write the full paper in Markdown format.
 """
 
 PLANNING_AND_CRITIQUE_PROMPT = """
