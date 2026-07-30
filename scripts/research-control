@@ -103,11 +103,24 @@ start_run() {
         issue_arg="--issue $issue_num"
     fi
 
-    echo "DEBUG: Checking environment..."
-    [ -z "$GEMINI_API_KEY" ] && echo "WARNING: GEMINI_API_KEY is empty"
-    [ -z "$GITHUB_TOKEN" ] && echo "WARNING: GITHUB_TOKEN is empty"
+    local docker_args=(
+        "-d"
+        "--user" "$(id -u):$(id -g)"
+        "-e" "HOME=/tmp"
+        "-e" "GEMINI_CLI_APPROVAL_MODE=yolo"
+        "-e" "GEMINI_CLI_TRUST_WORKSPACE=true"
+        "--name" "$container_name"
+        "-v" "$(pwd):/app"
+        "-v" "${run_dir}:/app/results"
+        "-w" "/app"
+        "-e" "GOOGLE_API_KEY=${GEMINI_API_KEY:-}"
+        "-e" "GITHUB_TOKEN=${GITHUB_TOKEN:-}"
+        "python:3.10-slim"
+        "bash" "-c" "pip install --user google-genai tenacity && export PATH=/tmp/.local/bin:\$PATH && python main.py --field \"\$1\"" "_" "$topic"
+    )
 
-    docker run -d --user "$(id -u):$(id -g)" -e HOME=/tmp -e GEMINI_CLI_APPROVAL_MODE=yolo -e GEMINI_CLI_TRUST_WORKSPACE=true --name "$container_name" -v "$(pwd):/app" -v "${run_dir}:/app/results" -w /app -e GOOGLE_API_KEY="${GEMINI_API_KEY:-}" -e GITHUB_TOKEN="${GITHUB_TOKEN:-}" python:3.10-slim bash -c 'pip install --user google-genai tenacity && export PATH=/tmp/.local/bin:$PATH && python main.py --field "$1"' _ "$topic"
+    echo "DEBUG: Final docker command: docker run ${docker_args[*]}"
+    docker run "${docker_args[@]}"
 
     echo "Started run $run_id in container $container_name"
 }
