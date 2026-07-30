@@ -1,0 +1,36 @@
+#!/bin/bash
+set -Eeo pipefail
+
+# Configuration
+CONFIG_FILE="$HOME/.config/researchGPT/sync.env"
+if [ -f "$CONFIG_FILE" ]; then
+    source "$CONFIG_FILE"
+fi
+
+RESEARCH_CLOUD_HOST="${RESEARCH_CLOUD_HOST:-}"
+RESEARCH_CLOUD_USER="${RESEARCH_CLOUD_USER:-}"
+RESEARCH_CLOUD_EXPORT_ROOT="${RESEARCH_CLOUD_EXPORT_ROOT:-$HOME/research-agent-data/exports}"
+RESEARCH_LOCAL_DATA_ROOT="${RESEARCH_LOCAL_DATA_ROOT:-$HOME/research-agent-data}"
+
+# Commands
+case "$1" in
+    export-completed)
+        echo "Exporting completed runs..."
+        for run_dir in "$RESEARCH_LOCAL_DATA_ROOT"/*; do
+            if [ -d "$run_dir" ] && [ -f "$run_dir/.status" ] && [ "$(cat "$run_dir/.status")" == "stopped" ]; then
+                run_id=$(basename "$run_dir")
+                echo "Exporting $run_id..."
+                mkdir -p "$RESEARCH_CLOUD_EXPORT_ROOT/$run_id"
+                tar -czf "$RESEARCH_CLOUD_EXPORT_ROOT/$run_id/export-$(date +%Y%m%d%H%M%S).tar.gz" -C "$RESEARCH_LOCAL_DATA_ROOT" "$run_id"
+            fi
+        done
+        ;;
+    pull)
+        echo "Pulling updates from cloud..."
+        # Use rsync to pull export archives and manifests
+        ;;
+    *)
+        echo "Usage: $0 {export-completed|pull|status|verify}"
+        exit 1
+        ;;
+esac

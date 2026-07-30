@@ -4,6 +4,22 @@ set -Eeo pipefail
 BASE_DIR="$HOME/research-agent-data"
 mkdir -p "$BASE_DIR"
 
+RUN_OWNER="${RUN_OWNER:-laptop}"
+
+check_ownership() {
+    local run_dir=$(get_run_dir "$1")
+    local owner_file="$run_dir/.owner"
+    if [ -f "$owner_file" ]; then
+        local current_owner=$(cat "$owner_file")
+        if [ "$current_owner" != "$RUN_OWNER" ]; then
+            echo "Error: Run '$1' is owned by '$current_owner', but current owner is '$RUN_OWNER'."
+            exit 1
+        fi
+    else
+        echo "$RUN_OWNER" > "$owner_file"
+    fi
+}
+
 if [ $# -lt 1 ]; then
     echo "Usage: $0 {start|resume|stop|status|list|reconcile} [options]"
     exit 1
@@ -62,6 +78,7 @@ start_run() {
     fi
 
     validate_run_id "$run_id"
+    check_ownership "$run_id"
     acquire_lock "$run_id"
     trap 'release_lock "$run_id"' EXIT
 
@@ -114,6 +131,7 @@ resume_run() {
     fi
 
     validate_run_id "$run_id"
+    check_ownership "$run_id"
     acquire_lock "$run_id"
     trap 'release_lock "$run_id"' EXIT
 
@@ -171,6 +189,7 @@ stop_run() {
     fi
 
     validate_run_id "$run_id"
+    check_ownership "$run_id"
     acquire_lock "$run_id"
     trap 'release_lock "$run_id"' EXIT
 
