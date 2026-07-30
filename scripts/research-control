@@ -94,7 +94,7 @@ start_run() {
         -e GITHUB_TOKEN="${GITHUB_TOKEN:-}" \
 
         python:3.10-slim \
-        bash -c "pip install --user google-genai tenacity && export PATH=\$PATH:/tmp/.local/bin && python main.py --field \"\$1\" $issue_arg" _ "$topic"
+        bash -c 'pip install --user google-genai tenacity && export PATH=/tmp/.local/bin:$PATH && python main.py --field "$1"' _ "$topic"
 
     echo "Started run $run_id in container $container_name"
 }
