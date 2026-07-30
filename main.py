@@ -245,20 +245,20 @@ class ResearchOrchestrator:
             Provide the full paper in well-structured Markdown format, with LaTeX-style math for equations.
             """
 
-        paper_content = self.coder.chat(paper_prompt)
-        with open(os.path.join(submission_dir, "paper.md"), "w") as f:
-            f.write(paper_content.strip())
-        
-        # Ensure the generated Markdown is moved to the main project directory for top-level access
-        shutil.copy2(os.path.join(submission_dir, "paper.md"), os.path.join(self.project_dir, "paper.md"))
-        print("Markdown paper successfully generated and copied to project root.")
-        
-        print(f"\nFinal submission package ready in: {submission_dir}")
-        
-        # Copy artifacts to submission folder
-        for f in os.listdir(self.project_dir):
-            if f.endswith(('.py', '.md')):
-                shutil.copy2(os.path.join(self.project_dir, f), submission_dir)
+            paper_content = self.coder.chat(paper_prompt)
+            with open(os.path.join(submission_dir, "paper.md"), "w") as f:
+                f.write(paper_content.strip())
+            
+            # Ensure the generated Markdown is moved to the main project directory for top-level access
+            shutil.copy2(os.path.join(submission_dir, "paper.md"), os.path.join(self.project_dir, "paper.md"))
+            print("Markdown paper successfully generated and copied to project root.")
+            
+            print(f"\nFinal submission package ready in: {submission_dir}")
+            
+            # Copy artifacts to submission folder
+            for f in os.listdir(self.project_dir):
+                if f.endswith(('.py', '.md')):
+                    shutil.copy2(os.path.join(self.project_dir, f), submission_dir)
         
         # Ensure the generated PDF and LaTeX are moved to the main project directory for top-level access
         
