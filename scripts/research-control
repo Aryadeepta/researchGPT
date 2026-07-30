@@ -142,8 +142,8 @@ resume_run() {
                 -v "$(pwd):/app" \
                 -v "${run_dir}:/app/results" \
                 -w /app \
-                -e GOOGLE_API_KEY="${GEMINI_API_KEY:-}" \
-                -e GITHUB_TOKEN="${GITHUB_TOKEN:-}" \
+                -e GOOGLE_API_KEY="${GOOGLE_API_KEY}" \
+                -e GITHUB_TOKEN="${GITHUB_TOKEN}" \
                 python:3.10-slim \
                 bash -c 'pip install google-genai tenacity && python main.py --resume "$1"' _ "$rel_project_dir"
 
