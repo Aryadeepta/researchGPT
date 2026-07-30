@@ -78,6 +78,17 @@ start_run() {
     fi
 
     validate_run_id "$run_id"
+    
+    # Pre-emptively check for stale locks
+    local run_dir=$(get_run_dir "$run_id")
+    local container_name=$(get_container_name "$run_id")
+    if [ -f "$run_dir/.lock" ]; then
+        if ! docker ps -a --format '{{.Names}}' | grep -Eq "^${container_name}$" || [ "$(docker inspect -f '{{.State.Running}}' "$container_name" 2>/dev/null)" == "false" ]; then
+            echo "Removing stale lock for $run_id before stop"
+            rm -f "$run_dir/.lock"
+        fi
+    fi
+
     acquire_lock "$run_id"
     check_ownership "$run_id"
     trap 'release_lock "$run_id"' EXIT
@@ -140,6 +151,17 @@ resume_run() {
     fi
 
     validate_run_id "$run_id"
+    
+    # Pre-emptively check for stale locks
+    local run_dir=$(get_run_dir "$run_id")
+    local container_name=$(get_container_name "$run_id")
+    if [ -f "$run_dir/.lock" ]; then
+        if ! docker ps -a --format '{{.Names}}' | grep -Eq "^${container_name}$" || [ "$(docker inspect -f '{{.State.Running}}' "$container_name" 2>/dev/null)" == "false" ]; then
+            echo "Removing stale lock for $run_id before stop"
+            rm -f "$run_dir/.lock"
+        fi
+    fi
+
     acquire_lock "$run_id"
     check_ownership "$run_id"
     trap 'release_lock "$run_id"' EXIT
@@ -198,6 +220,17 @@ stop_run() {
     fi
 
     validate_run_id "$run_id"
+    
+    # Pre-emptively check for stale locks
+    local run_dir=$(get_run_dir "$run_id")
+    local container_name=$(get_container_name "$run_id")
+    if [ -f "$run_dir/.lock" ]; then
+        if ! docker ps -a --format '{{.Names}}' | grep -Eq "^${container_name}$" || [ "$(docker inspect -f '{{.State.Running}}' "$container_name" 2>/dev/null)" == "false" ]; then
+            echo "Removing stale lock for $run_id before stop"
+            rm -f "$run_dir/.lock"
+        fi
+    fi
+
     acquire_lock "$run_id"
     check_ownership "$run_id"
     trap 'release_lock "$run_id"' EXIT
