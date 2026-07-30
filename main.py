@@ -226,38 +226,38 @@ class ResearchOrchestrator:
                     print("Adversary: Step not reached, re-executing...")
             self.state["idx"] += 1
             self.save_state()
+        # 3. Finalization & QA
+        # After execution loop finishes:
+        print("\n--- Research Complete ---")
+        self._notify_completion()
 
-            # 3. Finalization & QA
-            # After execution loop finishes:
-            print("\n--- Research Complete ---")
-            self._notify_completion()
+        submission_dir = os.path.join(self.project_dir, "submission")
+        os.makedirs(submission_dir, exist_ok=True)
 
-            submission_dir = os.path.join(self.project_dir, "submission")
-            os.makedirs(submission_dir, exist_ok=True)
+        # Generate Paper
+        paper_prompt = f"""
+        Convert the following research process and findings into a comprehensive, academic-style paper.
 
-            # Generate Paper
-            paper_prompt = f"""
-            Convert the following research process and findings into a comprehensive, academic-style paper.
+        Research Context:
+        {self.state['context']}
 
-            Research Context:
-            {self.state['context']}
+        Provide the full paper in well-structured Markdown format, with LaTeX-style math for equations.
+        """
 
-            Provide the full paper in well-structured Markdown format, with LaTeX-style math for equations.
-            """
+        paper_content = self.coder.chat(paper_prompt)
+        with open(os.path.join(submission_dir, "paper.md"), "w") as f:
+            f.write(paper_content.strip())
+        
+        # Ensure the generated Markdown is moved to the main project directory for top-level access
+        shutil.copy2(os.path.join(submission_dir, "paper.md"), os.path.join(self.project_dir, "paper.md"))
+        print("Markdown paper successfully generated and copied to project root.")
+        
+        print(f"\nFinal submission package ready in: {submission_dir}")
+        
+        # Copy artifacts to submission folder
+        for f in os.listdir(self.project_dir):
+            if f.endswith(('.py', '.md')):
 
-            paper_content = self.coder.chat(paper_prompt)
-            with open(os.path.join(submission_dir, "paper.md"), "w") as f:
-                f.write(paper_content.strip())
-            
-            # Ensure the generated Markdown is moved to the main project directory for top-level access
-            shutil.copy2(os.path.join(submission_dir, "paper.md"), os.path.join(self.project_dir, "paper.md"))
-            print("Markdown paper successfully generated and copied to project root.")
-            
-            print(f"\nFinal submission package ready in: {submission_dir}")
-            
-            # Copy artifacts to submission folder
-            for f in os.listdir(self.project_dir):
-                if f.endswith(('.py', '.md')):
                     shutil.copy2(os.path.join(self.project_dir, f), submission_dir)
         
         # Ensure the generated PDF and LaTeX are moved to the main project directory for top-level access
