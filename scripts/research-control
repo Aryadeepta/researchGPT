@@ -73,8 +73,8 @@ start_run() {
             echo "Error: Container $container_name is already running."
             exit 1
         else
-            echo "Removing existing container $container_name..."
-            docker rm "$container_name" > /dev/null
+            echo "Error: Container $container_name already exists in stopped state. Please remove it manually ('docker rm $container_name') before starting a new run."
+            exit 1
         fi
     fi
 
