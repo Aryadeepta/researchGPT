@@ -11,9 +11,21 @@ on:
       issue_num:
         description: 'Issue Number (optional, for notifications)'
         required: false
+      runner:
+        description: 'Runner (cloud or laptop)'
+        required: false
+        default: 'cloud'
+        type: choice
+        options:
+          - cloud
+          - laptop
 jobs:
   start:
-    runs-on: [self-hosted, linux, research-control]
+    runs-on:
+      - self-hosted
+      - linux
+      - research-control
+      - ${{ github.event.inputs.runner || 'cloud' }}
     steps:
       - uses: actions/checkout@v4
       - name: Auto-Diagnose Failure

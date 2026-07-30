@@ -78,8 +78,8 @@ start_run() {
     fi
 
     validate_run_id "$run_id"
-    check_ownership "$run_id"
     acquire_lock "$run_id"
+    check_ownership "$run_id"
     trap 'release_lock "$run_id"' EXIT
 
     local run_dir=$(get_run_dir "$run_id")
@@ -131,8 +131,8 @@ resume_run() {
     fi
 
     validate_run_id "$run_id"
-    check_ownership "$run_id"
     acquire_lock "$run_id"
+    check_ownership "$run_id"
     trap 'release_lock "$run_id"' EXIT
 
     local run_dir=$(get_run_dir "$run_id")
@@ -189,8 +189,8 @@ stop_run() {
     fi
 
     validate_run_id "$run_id"
-    check_ownership "$run_id"
     acquire_lock "$run_id"
+    check_ownership "$run_id"
     trap 'release_lock "$run_id"' EXIT
 
     local run_dir=$(get_run_dir "$run_id")

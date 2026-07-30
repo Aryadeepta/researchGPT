@@ -4,19 +4,19 @@ on:
     types: [created]
 
 jobs:
-  gemini-command:
+  gemini-command-cloud:
     if: >
       contains(github.event.issue.labels.*.name, 'gemini-task') &&
+      !contains(github.event.issue.labels.*.name, 'gemini-task-laptop') &&
       startsWith(github.event.comment.body, '/gemini ') &&
       (github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'COLLABORATOR')
-    runs-on: [self-hosted, linux, research-control]
+    runs-on: [self-hosted, linux, research-control, cloud]
     permissions:
       issues: write
       pull-requests: write
       contents: write
     steps:
       - uses: actions/checkout@v4
-      
       - name: Parse Command
         id: parse
         run: |
@@ -24,19 +24,14 @@ jobs:
           ${{ github.event.comment.body }}
           EOF
           )
-          
-          # Extract command (first line)
           FIRST_LINE=$(echo "$COMMENT_BODY" | head -n 1)
-          
           CMD=""
           ARGS=""
-          
           if [[ "$FIRST_LINE" =~ ^/gemini\ run$ ]]; then
             CMD="run"
           elif [[ "$FIRST_LINE" =~ ^/gemini\ revise\ (.*)$ ]]; then
             CMD="revise"
             ARGS="${BASH_REMATCH[1]}"
-            # The rest of the comment might have more instructions
             REST=$(echo "$COMMENT_BODY" | tail -n +2)
             if [ -n "$REST" ]; then
                 ARGS="$ARGS\n$REST"
@@ -51,19 +46,74 @@ jobs:
             echo "Unknown or malformed command: $FIRST_LINE"
             exit 1
           fi
-          
-          # Sanitize issue number and create a run ID
           ISSUE_NUM="${{ github.event.issue.number }}"
           RUN_ID="issue-${ISSUE_NUM}"
-          
           echo "cmd=$CMD" >> $GITHUB_OUTPUT
           echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
           echo "issue_num=$ISSUE_NUM" >> $GITHUB_OUTPUT
-          
-          # Save args to a file to prevent shell injection
           echo -e "$ARGS" > /tmp/gemini_args.txt
           echo "args_file=/tmp/gemini_args.txt" >> $GITHUB_OUTPUT
-          
+      - name: Execute Command
+        run: |
+          scripts/gemini-code-control "${{ steps.parse.outputs.cmd }}" \
+            --run-id "${{ steps.parse.outputs.run_id }}" \
+            --issue "${{ steps.parse.outputs.issue_num }}" \
+            --args-file "${{ steps.parse.outputs.args_file }}"
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GEMINI_CLI_APPROVAL_MODE: yolo
+          GEMINI_CLI_TRUST_WORKSPACE: true
+
+  gemini-command-laptop:
+    if: >
+      contains(github.event.issue.labels.*.name, 'gemini-task') &&
+      contains(github.event.issue.labels.*.name, 'gemini-task-laptop') &&
+      startsWith(github.event.comment.body, '/gemini ') &&
+      (github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'COLLABORATOR')
+    runs-on: [self-hosted, linux, research-control, laptop]
+    permissions:
+      issues: write
+      pull-requests: write
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse Command
+        id: parse
+        run: |
+          COMMENT_BODY=$(cat << 'EOF'
+          ${{ github.event.comment.body }}
+          EOF
+          )
+          FIRST_LINE=$(echo "$COMMENT_BODY" | head -n 1)
+          CMD=""
+          ARGS=""
+          if [[ "$FIRST_LINE" =~ ^/gemini\ run$ ]]; then
+            CMD="run"
+          elif [[ "$FIRST_LINE" =~ ^/gemini\ revise\ (.*)$ ]]; then
+            CMD="revise"
+            ARGS="${BASH_REMATCH[1]}"
+            REST=$(echo "$COMMENT_BODY" | tail -n +2)
+            if [ -n "$REST" ]; then
+                ARGS="$ARGS\n$REST"
+            fi
+          elif [[ "$FIRST_LINE" =~ ^/gemini\ test$ ]]; then
+            CMD="test"
+          elif [[ "$FIRST_LINE" =~ ^/gemini\ status$ ]]; then
+            CMD="status"
+          elif [[ "$FIRST_LINE" =~ ^/gemini\ stop$ ]]; then
+            CMD="stop"
+          else
+            echo "Unknown or malformed command: $FIRST_LINE"
+            exit 1
+          fi
+          ISSUE_NUM="${{ github.event.issue.number }}"
+          RUN_ID="issue-${ISSUE_NUM}"
+          echo "cmd=$CMD" >> $GITHUB_OUTPUT
+          echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
+          echo "issue_num=$ISSUE_NUM" >> $GITHUB_OUTPUT
+          echo -e "$ARGS" > /tmp/gemini_args.txt
+          echo "args_file=/tmp/gemini_args.txt" >> $GITHUB_OUTPUT
       - name: Execute Command
         run: |
           scripts/gemini-code-control "${{ steps.parse.outputs.cmd }}" \
