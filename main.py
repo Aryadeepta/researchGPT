@@ -249,18 +249,8 @@ class ResearchOrchestrator:
         paper_content = self.coder.chat(paper_prompt)
         with open(os.path.join(submission_dir, "paper.md"), "w") as f:
             f.write(paper_content.strip())
-            
-        # Try compiling to PDF if pdflatex is available
-        if CodeExecutor.execute_shell("command -v pdflatex", self.project_dir).strip():
-            print("Orchestrator: Found LaTeX installation. Compiling paper.tex to PDF...")
-            with open(os.path.join(submission_dir, "paper.tex"), "w") as f:
-                f.write(paper_content.strip())
-            
-            compile_cmd = "pdflatex -interaction=nonstopmode paper.tex"
-            logs = CodeExecutor.execute_shell(f"cd {submission_dir} && {compile_cmd} && {compile_cmd}", self.project_dir)
-            print(f"LaTeX Compilation: {logs}")
-        else:
-            print("Orchestrator: LaTeX (pdflatex) not found. Skipping PDF generation.")
+        
+        print(f"\nFinal submission package ready in: {submission_dir}")
         
         # Copy artifacts to submission folder
         for f in os.listdir(self.project_dir):
