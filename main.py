@@ -3,6 +3,7 @@ import os
 import re
 import json
 import sys
+import shutil
 import traceback
 import signal
 from datetime import datetime
