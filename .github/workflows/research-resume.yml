@@ -5,9 +5,21 @@ on:
       run_id:
         description: 'Unique Run ID'
         required: true
+      runner:
+        description: 'Runner (cloud or laptop)'
+        required: false
+        default: 'cloud'
+        type: choice
+        options:
+          - cloud
+          - laptop
 jobs:
   resume:
-    runs-on: [self-hosted, linux, research-control]
+    runs-on:
+      - self-hosted
+      - linux
+      - research-control
+      - ${{ github.event.inputs.runner || 'cloud' }}
     steps:
       - uses: actions/checkout@v4
       - name: Resume Research Run
