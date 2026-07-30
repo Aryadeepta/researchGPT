@@ -228,24 +228,23 @@ class ResearchOrchestrator:
             self.save_state()
 
             # 3. Finalization & QA
-            print("\n--- Pipeline complete. Finalizing Submission Package ---")
+            # After execution loop finishes:
+            print("\n--- Research Complete ---")
             self._notify_completion()
 
             submission_dir = os.path.join(self.project_dir, "submission")
-            # ... (rest of the method)
+            os.makedirs(submission_dir, exist_ok=True)
 
-        os.makedirs(submission_dir, exist_ok=True)
-        
-        # Generate Paper
-        paper_prompt = f"""
-        Convert the following research process and findings into a comprehensive, academic-style paper.
-        
-        Research Context:
-        {self.state['context']}
-        
-        Provide the full paper in well-structured Markdown format, with LaTeX-style math for equations.
-        """
-        
+            # Generate Paper
+            paper_prompt = f"""
+            Convert the following research process and findings into a comprehensive, academic-style paper.
+
+            Research Context:
+            {self.state['context']}
+
+            Provide the full paper in well-structured Markdown format, with LaTeX-style math for equations.
+            """
+
         paper_content = self.coder.chat(paper_prompt)
         with open(os.path.join(submission_dir, "paper.md"), "w") as f:
             f.write(paper_content.strip())
