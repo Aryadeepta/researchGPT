@@ -298,8 +298,11 @@ reconcile_runs() {
             local container_name=$(get_container_name "$run_id")
             
             if [ -f "$run_dir/.lock" ]; then
-                echo "Removing stale lock for $run_id"
-                rm -f "$run_dir/.lock"
+                local container_name=$(get_container_name "$run_id")
+                if ! docker ps -a --format '{{.Names}}' | grep -Eq "^${container_name}$" || [ "$(docker inspect -f '{{.State.Running}}' "$container_name" 2>/dev/null)" == "false" ]; then
+                    echo "Removing stale lock for $run_id"
+                    rm -f "$run_dir/.lock"
+                fi
             fi
             
             local status="unknown"
