@@ -1,18 +1,29 @@
 #!/bin/bash
 # scripts/docker-lifecycle
 ACTION=$1
+STATE_FILE="$HOME/.config/researchGPT/active_agents.list"
+mkdir -p "$(dirname "$STATE_FILE")"
+
 CONTAINER_PATTERN="research-agent-*"
 
 if [ "$ACTION" == "suspend" ]; then
     echo "Stopping research agents before suspend..."
-    for container in $(docker ps -q -f "name=$CONTAINER_PATTERN"); do
+    # Save IDs of currently running containers
+    docker ps -q -f "name=$CONTAINER_PATTERN" -f "status=running" > "$STATE_FILE"
+    
+    for container in $(cat "$STATE_FILE"); do
         echo "Stopping $container..."
         docker stop "$container"
     done
 elif [ "$ACTION" == "resume" ]; then
-    echo "Restarting research agents after resume..."
-    for container in $(docker ps -a -q -f "name=$CONTAINER_PATTERN"); do
-        echo "Starting $container..."
-        docker start "$container"
-    done
+    if [ -f "$STATE_FILE" ]; then
+        echo "Restarting research agents that were running before suspend..."
+        for container in $(cat "$STATE_FILE"); do
+            echo "Starting $container..."
+            docker start "$container"
+        done
+        rm -f "$STATE_FILE"
+    else
+        echo "No previously running research agents to restart."
+    fi
 fi
