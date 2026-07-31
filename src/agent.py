@@ -22,9 +22,11 @@ class ResearchAgent:
         self.current_model_idx = 0
 
     @retry(
-        stop=stop_after_attempt(5),
-        wait=wait_exponential(multiplier=1, min=60, max=300),
-        retry=retry_if_exception_type(Exception)
+        stop=stop_after_attempt(10),
+        # Wait exponentially, adding 60s min, max 600s, with a random jitter
+        wait=wait_exponential(multiplier=2, min=60, max=600),
+        retry=retry_if_exception_type(Exception),
+        reraise=True
     )
     def chat(self, message):
         # Try models in sequence until one succeeds
