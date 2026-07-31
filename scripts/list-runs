@@ -1,0 +1,4 @@
+#!/bin/bash
+# scripts/list-runs
+echo "Listing completed research runs in results/:"
+ls -1 results/
