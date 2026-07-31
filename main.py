@@ -13,13 +13,17 @@ from src.rag import ProjectRAG, summarize_project
 
 class ResearchOrchestrator:
     def __init__(self, project_dir=None):
+        print("DEBUG: ResearchOrchestrator.__init__ started")
         self.project_dir = project_dir
         self.state = {"steps": [], "idx": 0, "context": "", "topic": "", "proposal": ""}
+        print("DEBUG: Initializing agents")
         self.planner = ResearchAgent("You are a research planner. Output JSON workflows.", model_queue=SMART_QUEUE)
         self.coder = ResearchAgent("You are a Python coder. Output runnable code only.", model_queue=FAST_QUEUE)
         self.adversary = ResearchAgent("You are an adversarial reviewer. Critique results and check novelty.", model_queue=SMART_QUEUE)
+        print("DEBUG: Agents initialized")
         self.skills = {}
         self.stop_requested = False
+        print("DEBUG: ResearchOrchestrator.__init__ finished")
         
         signal.signal(signal.SIGINT, self._handle_stop_signal)
         signal.signal(signal.SIGTERM, self._handle_stop_signal)
@@ -292,14 +296,19 @@ def main():
         print(f"DEBUG: Parsed args: {args}")
 
         if args.resume:
+            print("DEBUG: Instantiating ResearchOrchestrator for resume")
             orch = ResearchOrchestrator()
             print(f"DEBUG: Attempting to load state from: {args.resume}")
             orch.load_state(args.resume)
+            print("DEBUG: State loaded, calling orch.run(resume=True)")
             orch.run(resume=True)
         elif args.field:
             field = " ".join(args.field)
+            print("DEBUG: Instantiating ResearchOrchestrator for start")
             orch = ResearchOrchestrator()
+            print("DEBUG: ResearchOrchestrator instantiated")
             orch.state["issue_num"] = args.issue
+            print("DEBUG: Calling orch.run(resume=False)")
             orch.run(field=field, resume=False, interactive=args.interactive)
         else:
             print("Error: Provide --field or --resume")
