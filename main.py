@@ -224,51 +224,37 @@ class ResearchOrchestrator:
                     print("Adversary: Step not reached, re-executing...")
             self.state["idx"] += 1
             self.save_state()
+    def draft_paper(self):
+        print("Orchestrator: Implementing structured LaTeX drafting...")
+        draft_dir = os.path.join(self.project_dir, "paper_draft")
+        os.makedirs(draft_dir, exist_ok=True)
+        
+        # 1. Research Style
+        style_guide_json = self.coder.chat(STYLE_GUIDE_PROMPT.format(topic=self.state['topic']))
+        cleaned_json = re.sub(r'```json|```', '', style_guide_json).strip()
+        style_data = json.loads(cleaned_json)
+        
+        # 2. Generate main.tex
+        main_tex = self.coder.chat(MAIN_TEX_PROMPT.format(sections=style_data['sections'], latex_class=style_data['latex_class']))
+        with open(os.path.join(draft_dir, "main.tex"), "w") as f:
+            f.write(main_tex)
+            
+        # 3. Generate Sections
+        safe_context = self.state['context'].replace("{", "{{").replace("}", "}}")
+        for section in style_data['sections']:
+            print(f"Drafting section: {section}")
+            section_content = self.coder.chat(SECTION_DRAFTING_PROMPT.format(section_name=section, topic=self.state['topic'], research_context=safe_context))
+            with open(os.path.join(draft_dir, f"{section}.tex"), "w") as f:
+                f.write(section_content)
+        
+        print(f"LaTeX project generated in {draft_dir}")
+
+    def run(self, field=None, resume=False, interactive=False):
+        # ... (rest of code)
         # 3. Finalization & QA
         # After execution loop finishes:
         print("\n--- Research Complete ---", flush=True)
-        print("DEBUG: Before _notify_completion", flush=True)
         self._notify_completion()
-        print("DEBUG: After _notify_completion", flush=True)
-
-        submission_dir = os.path.join(self.project_dir, "submission")
-        os.makedirs(submission_dir, exist_ok=True)
-
-        # Generate Paper
-        print("\n--- Stage: Formal Paper Drafting (LaTeX) ---", flush=True)
-        try:
-            print("DEBUG: Before LLM chat for paper drafting", flush=True)
-            # Sanitize the context to prevent .format() from misinterpreting braces
-            safe_context = self.state['context'].replace("{", "{{").replace("}", "}}")
-            
-            paper_output = self.coder.chat(PAPER_DRAFTING_PROMPT.format(research_context=safe_context))
-            print("DEBUG: After LLM chat for paper drafting", flush=True)
-            
-            draft_dir = os.path.join(self.project_dir, "paper_draft")
-            os.makedirs(draft_dir, exist_ok=True)
-            
-            # Parse the output which has FILE: [name] markers
-            files = re.split(r'FILE:\s*\[(.*?)\]', paper_output)
-            for i in range(1, len(files), 2):
-                filename = files[i]
-                content = files[i+1].strip()
-                with open(os.path.join(draft_dir, filename), "w") as f:
-                    f.write(content)
-            
-            print(f"LaTeX paper draft successfully generated in: {draft_dir}", flush=True)
-        except Exception as e:
-            print(f"CRITICAL ERROR in Paper Drafting: {e}", flush=True)
-            traceback.print_exc()
-        
-        print(f"\nFinal submission package ready in: {submission_dir}", flush=True)
-        
-        # Copy artifacts to submission folder
-        for f in os.listdir(self.project_dir):
-            if f.endswith(('.py', '.md')):
-
-                    shutil.copy2(os.path.join(self.project_dir, f), submission_dir)
-        
-        # Ensure the generated PDF and LaTeX are moved to the main project directory for top-level access
         
         # QA Loop
         if interactive:
