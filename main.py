@@ -81,7 +81,8 @@ class ResearchOrchestrator:
 
     def run(self, field=None, resume=False, interactive=False):
         if resume:
-            print(f"Resuming project in {self.project_dir}...")
+            print(f"DEBUG: Resuming project in {self.project_dir}. Current state index: {self.state.get('idx')}")
+            print(f"DEBUG: Total steps: {len(self.state.get('steps', []))}")
         else:
             # INTERACTIVE TOPIC SELECTION
             print("\n--- Topic Selection ---")
@@ -242,15 +243,19 @@ class ResearchOrchestrator:
         safe_context = self.state['context'].replace("{", "{{").replace("}", "}}")
         
         paper_output = self.coder.chat(PAPER_DRAFTING_PROMPT.format(research_context=safe_context))
+        print(f"DEBUG: Paper output length: {len(paper_output)}")
+        print(f"DEBUG: First 200 characters of paper output: {paper_output[:200]}")
         
         draft_dir = os.path.join(self.project_dir, "paper_draft")
         os.makedirs(draft_dir, exist_ok=True)
         
         # Parse the output which has FILE: [name] markers
         files = re.split(r'FILE:\s*\[(.*?)\]', paper_output)
+        print(f"DEBUG: Files array length: {len(files)}")
         for i in range(1, len(files), 2):
             filename = files[i]
             content = files[i+1].strip()
+            print(f"DEBUG: Writing file {filename}, length {len(content)}")
             with open(os.path.join(draft_dir, filename), "w") as f:
                 f.write(content)
         
