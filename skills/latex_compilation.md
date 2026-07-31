@@ -1,12 +1,12 @@
-# LaTeX Compilation Skill
+# LaTeX Drafting Skill
 ## Goal
-Compile LaTeX source code into a PDF document.
+Draft a comprehensive academic research paper in structured LaTeX format, ready for Overleaf.
+
 ## Instructions
-1. Ensure the provided LaTeX code is complete (includes document class, necessary packages, and document body).
-2. Save the LaTeX code to a file named `paper.tex`.
-3. Use the following bash commands to compile it into a PDF:
-   ```bash
-   pdflatex paper.tex
-   pdflatex paper.tex
-   ```
-4. Ensure the resulting `paper.pdf` is present in the current working directory.
+1. Structure the paper as a main LaTeX project.
+2. Create a `main.tex` file as the root document.
+3. Organize the paper into modular section files (`abstract.tex`, `introduction.tex`, `literature_review.tex`, `methodology.tex`, `results.tex`, `discussion.tex`, `conclusion.tex`, `references.bib`).
+4. Ensure `main.tex` uses `\input{}` to include these sections.
+5. Provide high-quality, professional LaTeX code, including appropriate document classes, packages, and correctly formatted mathematical equations.
+6. The goal is to provide a complete, robust LaTeX project directory that can be uploaded directly to Overleaf for final compilation.
+7. DO NOT attempt to compile the LaTeX code. Only provide the source files.
