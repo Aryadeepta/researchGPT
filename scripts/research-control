@@ -83,8 +83,8 @@ start_run() {
     local run_dir=$(get_run_dir "$run_id")
     local container_name=$(get_container_name "$run_id")
     if [ -f "$run_dir/.lock" ]; then
-        if ! docker ps -a --format '{{.Names}}' | grep -Eq "^${container_name}$" || [ "$(docker inspect -f '{{.State.Running}}' "$container_name" 2>/dev/null)" == "false" ]; then
-            echo "Removing stale lock for $run_id before stop"
+        if ! docker ps -a --format '{{.Names}}' | grep -Eq "^${container_name}$" || [ "$(docker inspect -f '{{.State.Running}}' "$container_name" 2>/dev/null)" == "false" ] || [ "$(docker inspect -f '{{.State.Paused}}' "$container_name" 2>/dev/null)" == "true" ]; then
+            echo "Removing stale lock for $run_id before operation"
             rm -f "$run_dir/.lock"
         fi
     fi
@@ -156,8 +156,8 @@ resume_run() {
     local run_dir=$(get_run_dir "$run_id")
     local container_name=$(get_container_name "$run_id")
     if [ -f "$run_dir/.lock" ]; then
-        if ! docker ps -a --format '{{.Names}}' | grep -Eq "^${container_name}$" || [ "$(docker inspect -f '{{.State.Running}}' "$container_name" 2>/dev/null)" == "false" ]; then
-            echo "Removing stale lock for $run_id before stop"
+        if ! docker ps -a --format '{{.Names}}' | grep -Eq "^${container_name}$" || [ "$(docker inspect -f '{{.State.Running}}' "$container_name" 2>/dev/null)" == "false" ] || [ "$(docker inspect -f '{{.State.Paused}}' "$container_name" 2>/dev/null)" == "true" ]; then
+            echo "Removing stale lock for $run_id before operation"
             rm -f "$run_dir/.lock"
         fi
     fi
@@ -225,8 +225,8 @@ stop_run() {
     local run_dir=$(get_run_dir "$run_id")
     local container_name=$(get_container_name "$run_id")
     if [ -f "$run_dir/.lock" ]; then
-        if ! docker ps -a --format '{{.Names}}' | grep -Eq "^${container_name}$" || [ "$(docker inspect -f '{{.State.Running}}' "$container_name" 2>/dev/null)" == "false" ]; then
-            echo "Removing stale lock for $run_id before stop"
+        if ! docker ps -a --format '{{.Names}}' | grep -Eq "^${container_name}$" || [ "$(docker inspect -f '{{.State.Running}}' "$container_name" 2>/dev/null)" == "false" ] || [ "$(docker inspect -f '{{.State.Paused}}' "$container_name" 2>/dev/null)" == "true" ]; then
+            echo "Removing stale lock for $run_id before operation"
             rm -f "$run_dir/.lock"
         fi
     fi
