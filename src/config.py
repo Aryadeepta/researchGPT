@@ -64,20 +64,30 @@ Is the proposed research novel compared to the context literature?
 Return 'VALID' if it is novel and valuable, or 'INVALID' followed by a detailed explanation why it is redundant or not novel.
 """
 
-PAPER_DRAFTING_PROMPT = """
-Write a comprehensive, professional-grade academic research paper in LaTeX format.
+STYLE_GUIDE_PROMPT = """
+Research the common academic style, structure, sections, and length for a high-impact research paper on: {topic}.
+Return ONLY JSON:
+{{
+  "sections": ["abstract", "introduction", "literature_review", "methodology", "results", "discussion", "conclusion"],
+  "latex_class": "article",
+  "recommended_length_pages": 15
+}}
+"""
 
-Requirements:
-- Project Structure: Create a main.tex file that uses \\input{{}} to include modular files for: 
-    abstract.tex, introduction.tex, literature_review.tex, methodology.tex, results.tex, discussion.tex, conclusion.tex, references.bib.
-- Formatting: Use the standard 'article' document class (or similar professional template). Ensure all LaTeX commands for math, figures, and citations are syntactically correct.
-- Depth & Length: This is a discovery of high magnitude. Ensure the content is exhaustive, professional, and structured for a submission to a top-tier journal. Total content should be substantial.
-- Context:
+MAIN_TEX_PROMPT = """
+Create a `main.tex` file content based on the following sections: {sections}.
+The LaTeX code should use \\documentclass{{{latex_class}}} and include all required packages for academic papers.
+Include \\input{{}} commands for each section.
+Return ONLY the LaTeX code.
+"""
+
+SECTION_DRAFTING_PROMPT = """
+Draft the content for the {section_name} section of a paper titled '{topic}'.
+Ensure it is professional, academic, and detailed. Use LaTeX for math.
+Context:
 {research_context}
 
-Return the content for each file separately in the following format:
-FILE: [filename.tex]
-[Content of the file]
+Return ONLY the LaTeX content for this section.
 """
 
 PLANNING_AND_CRITIQUE_PROMPT = """

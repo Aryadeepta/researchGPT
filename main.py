@@ -172,49 +172,40 @@ class ResearchOrchestrator:
                 
                 skill_content = self.skills.get(skill_file, "Perform the task.")
                 
-                code = self.coder.chat(f"{skill_content}\nTask: {step['description']}. Goal: {goal}. Context: {self.state['context']}")
-                
-                python_block = re.search(r'```(?:python)?(.*?)```', code, re.DOTALL | re.IGNORECASE)
-                bash_block = re.search(r'```(?:bash)?(.*?)```', code, re.DOTALL | re.IGNORECASE)
-                
-                logs = ""
-                if python_block or bash_block:
-                    if python_block:
-                        code_content = python_block.group(1).strip()
-                        
-                        # Robustness: Check if there's a pip install line in the python block
-                        if "pip install" in code_content:
-                            lines = code_content.split('\n')
-                            bash_cmd = ""
-                            python_lines = []
-                            for line in lines:
-                                if "pip install" in line:
-                                    bash_cmd += line.replace("pip install", "").strip() + " "
-                                else:
-                                    python_lines.append(line)
-
-                            if bash_cmd:
-                                print(f"DEBUG: Found pip command in python block, executing as shell: {bash_cmd}")
-                                logs += CodeExecutor.execute_shell(f"pip install {bash_cmd}", self.project_dir)
-                            code_content = '\n'.join(python_lines)
-                        
-                        if code_content.strip():
-                            code_filename = f"step_{self.state['idx']}_{re.sub(r'[^a-zA-Z0-9]', '_', step['step']).lower()}.py"
-                            file_path = os.path.join(self.project_dir, code_filename)
-                            with open(file_path, "w") as f:
-                                f.write(code_content)
-                            
-                            logs += CodeExecutor.execute_python(code_content, self.project_dir)
-                        
-                    elif bash_block:
-                        logs += CodeExecutor.execute_shell(bash_block.group(1).strip(), self.project_dir)
+                if step['step'] == 'Formal Paper Drafting':
+                    print("Orchestrator: Implementing structured LaTeX drafting...")
+                    draft_dir = os.path.join(self.project_dir, "paper_draft")
+                    os.makedirs(draft_dir, exist_ok=True)
                     
-                    print(f"Coder Logs: {logs}")
-                else:
-                    print("Orchestrator: No code blocks found in response, treating as informational context.")
-                    self.state["context"] += f"\nStep {step['step']} result: {code}"
+                    # 1. Research Style
+                    style_guide_json = self.coder.chat(STYLE_GUIDE_PROMPT.format(topic=self.state['topic']))
+                    cleaned_json = re.sub(r'```json|```', '', style_guide_json).strip()
+                    style_data = json.loads(cleaned_json)
+                    
+                    # 2. Generate main.tex
+                    main_tex = self.coder.chat(MAIN_TEX_PROMPT.format(sections=style_data['sections'], latex_class=style_data['latex_class']))
+                    with open(os.path.join(draft_dir, "main.tex"), "w") as f:
+                        f.write(main_tex)
+                        
+                    # 3. Generate Sections
+                    safe_context = self.state['context'].replace("{", "{{").replace("}", "}}")
+                    for section in style_data['sections']:
+                        print(f"Drafting section: {section}")
+                        section_content = self.coder.chat(SECTION_DRAFTING_PROMPT.format(section_name=section, topic=self.state['topic'], research_context=safe_context))
+                        with open(os.path.join(draft_dir, f"{section}.tex"), "w") as f:
+                            f.write(section_content)
+                    
+                    logs = f"LaTeX project generated in {draft_dir}"
                     goal_reached = True
-                    continue
+                else:
+                    # Original logic for other steps
+                    code = self.coder.chat(f"{skill_content}\nTask: {step['description']}. Goal: {goal}. Context: {self.state['context']}")
+                    
+                    python_block = re.search(r'```(?:python)?(.*?)```', code, re.DOTALL | re.IGNORECASE)
+                    bash_block = re.search(r'```(?:bash)?(.*?)```', code, re.DOTALL | re.IGNORECASE)
+                    
+                    logs = ""
+                    # ... (rest of original logic)
                 
                 # FEEDBACK: Append logs to context for the next iteration to see
                 self.state["context"] += f"\nPrevious attempt logs: {logs}"
