@@ -129,7 +129,6 @@ start_run() {
         "python:3.10-slim"
         "bash" "-c" "env | grep GOOGLE; pip install --user google-genai tenacity && export PATH=/tmp/.local/bin:\$PATH && python main.py --field \"\$1\"" "_" "$topic"
     )
-    )
 
     echo "DEBUG: Final docker command: docker run ${docker_args[*]}"
     docker run "${docker_args[@]}"
