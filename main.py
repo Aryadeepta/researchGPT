@@ -238,29 +238,27 @@ class ResearchOrchestrator:
 
         # Generate Paper
         print("\n--- Stage: Formal Paper Drafting (LaTeX) ---")
-        
-        # Sanitize the context to prevent .format() from misinterpreting braces
-        safe_context = self.state['context'].replace("{", "{{").replace("}", "}}")
-        
-        paper_output = self.coder.chat(PAPER_DRAFTING_PROMPT.format(research_context=safe_context))
-        print(f"DEBUG: Paper output length: {len(paper_output)}")
-        print(f"DEBUG: First 200 characters of paper output: {paper_output[:200]}")
-        
-        draft_dir = os.path.join(self.project_dir, "paper_draft")
-        os.makedirs(draft_dir, exist_ok=True)
-        
-        # Parse the output which has FILE: [name] markers
-        files = re.split(r'FILE:\s*\[(.*?)\]', paper_output)
-        print(f"DEBUG: Files array length: {len(files)}")
-        for i in range(1, len(files), 2):
-            filename = files[i]
-            content = files[i+1].strip()
-            print(f"DEBUG: Writing file {filename}, length {len(content)}")
-            with open(os.path.join(draft_dir, filename), "w") as f:
-                f.write(content)
-        
-        print(f"LaTeX paper draft generated in: {draft_dir}")
-        print("Markdown paper successfully generated and copied to project root.")
+        try:
+            # Sanitize the context to prevent .format() from misinterpreting braces
+            safe_context = self.state['context'].replace("{", "{{").replace("}", "}}")
+            
+            paper_output = self.coder.chat(PAPER_DRAFTING_PROMPT.format(research_context=safe_context))
+            
+            draft_dir = os.path.join(self.project_dir, "paper_draft")
+            os.makedirs(draft_dir, exist_ok=True)
+            
+            # Parse the output which has FILE: [name] markers
+            files = re.split(r'FILE:\s*\[(.*?)\]', paper_output)
+            for i in range(1, len(files), 2):
+                filename = files[i]
+                content = files[i+1].strip()
+                with open(os.path.join(draft_dir, filename), "w") as f:
+                    f.write(content)
+            
+            print(f"LaTeX paper draft successfully generated in: {draft_dir}")
+        except Exception as e:
+            print(f"CRITICAL ERROR in Paper Drafting: {e}")
+            traceback.print_exc()
         
         print(f"\nFinal submission package ready in: {submission_dir}")
         
