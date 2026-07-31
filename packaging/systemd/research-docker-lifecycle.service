@@ -1,0 +1,12 @@
+[Unit]
+Description=Manage Docker research containers on suspend/resume
+Before=systemd-suspend.service systemd-hibernate.service
+
+[Service]
+Type=oneshot
+ExecStart=/home/aryad/researchGPT/scripts/docker-lifecycle suspend
+ExecStop=/home/aryad/researchGPT/scripts/docker-lifecycle resume
+RemainAfterExit=yes
+
+[Install]
+WantedBy=suspend.target hibernate.target

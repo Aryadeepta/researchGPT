@@ -1,0 +1,18 @@
+#!/bin/bash
+# scripts/docker-lifecycle
+ACTION=$1
+CONTAINER_PATTERN="research-agent-*"
+
+if [ "$ACTION" == "suspend" ]; then
+    echo "Stopping research agents before suspend..."
+    for container in $(docker ps -q -f "name=$CONTAINER_PATTERN"); do
+        echo "Stopping $container..."
+        docker stop "$container"
+    done
+elif [ "$ACTION" == "resume" ]; then
+    echo "Restarting research agents after resume..."
+    for container in $(docker ps -a -q -f "name=$CONTAINER_PATTERN"); do
+        echo "Starting $container..."
+        docker start "$container"
+    done
+fi
