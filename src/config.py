@@ -64,7 +64,7 @@ PAPER_DRAFTING_PROMPT = """
 Write a comprehensive, professional-grade academic research paper in LaTeX format.
 
 Requirements:
-- Project Structure: Create a main.tex file that uses \input{} to include modular files for: 
+- Project Structure: Create a main.tex file that uses \\input{{}} to include modular files for: 
     abstract.tex, introduction.tex, literature_review.tex, methodology.tex, results.tex, discussion.tex, conclusion.tex, references.bib.
 - Formatting: Use the standard 'article' document class (or similar professional template). Ensure all LaTeX commands for math, figures, and citations are syntactically correct.
 - Depth & Length: This is a discovery of high magnitude. Ensure the content is exhaustive, professional, and structured for a submission to a top-tier journal. Total content should be substantial.
