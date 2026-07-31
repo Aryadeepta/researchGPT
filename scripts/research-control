@@ -208,7 +208,6 @@ resume_run() {
             exit 1
         fi
     fi
-    fi
 
     echo "Resumed run $run_id"
 }
