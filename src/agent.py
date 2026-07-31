@@ -5,20 +5,24 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 from google.genai.errors import ClientError, ServerError
 
 class ResearchAgent:
-    def __init__(self, system_instruction):
+    def __init__(self, system_instruction, model_queue=None):
         api_key = os.environ.get("GOOGLE_API_KEY")
         if not api_key:
             raise ValueError("GOOGLE_API_KEY not set.")
         self.client = genai.Client(api_key=api_key)
         self.system_instruction = system_instruction
         # 5-tier downgrade strategy starting from cheapest/most efficient
-        self.model_queue = [
-            "gemini-3.1-flash-lite", 
-            "gemini-2.0-flash-lite-preview",
-            "gemini-2.0-flash-exp", 
-            "gemini-2.0-flash",
-            "gemini-3.5-flash"
-        ]
+        if model_queue:
+            self.model_queue = model_queue
+        else:
+            self.model_queue = [
+                "gemini-3.1-flash-lite", 
+                "gemini-2.0-flash-lite-preview",
+                "gemini-2.0-flash-exp", 
+                "gemini-2.0-flash",
+                "gemini-3.5-flash",
+                "gemini-1.5-flash"
+            ]
         self.current_model_idx = 0
 
     @retry(

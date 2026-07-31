@@ -15,9 +15,9 @@ class ResearchOrchestrator:
     def __init__(self, project_dir=None):
         self.project_dir = project_dir
         self.state = {"steps": [], "idx": 0, "context": "", "topic": "", "proposal": ""}
-        self.planner = ResearchAgent("You are a research planner. Output JSON workflows.")
-        self.coder = ResearchAgent("You are a Python coder. Output runnable code only.")
-        self.adversary = ResearchAgent("You are an adversarial reviewer. Critique results and check novelty.")
+        self.planner = ResearchAgent("You are a research planner. Output JSON workflows.", model_queue=SMART_QUEUE)
+        self.coder = ResearchAgent("You are a Python coder. Output runnable code only.", model_queue=FAST_QUEUE)
+        self.adversary = ResearchAgent("You are an adversarial reviewer. Critique results and check novelty.", model_queue=SMART_QUEUE)
         self.skills = {}
         self.stop_requested = False
         
