@@ -1,0 +1,27 @@
+#!/bin/bash
+# scripts/generate-paper
+set -e
+
+# Usage: scripts/generate-paper --run-dir <path-to-results-dir>
+
+run_dir=""
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --run-dir) run_dir="$2"; shift 2 ;;
+        *) echo "Unknown option: $1"; exit 1 ;;
+    esac
+done
+
+if [ -z "$run_dir" ]; then
+    echo "Usage: $0 --run-dir <path-to-results-dir>"
+    exit 1
+fi
+
+if [ ! -d "$run_dir" ]; then
+    echo "Error: Directory $run_dir does not exist."
+    exit 1
+fi
+
+# Use docker to run the draft_paper method
+docker run --rm -v "$(pwd):/app" -w /app -e GOOGLE_API_KEY="${GOOGLE_API_KEY:-}" python:3.10-slim \
+bash -c "pip install --user google-genai tenacity pydantic requests httpx google-auth websockets anyio annotated-types typing-inspection charset-normalizer urllib3 cffi pyasn1 pycparser cryptography && python3 -c 'from main import ResearchOrchestrator; orch = ResearchOrchestrator(); orch.load_state(\"$run_dir\"); orch.draft_paper()'"
