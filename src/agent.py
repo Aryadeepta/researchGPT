@@ -16,12 +16,11 @@ class ResearchAgent:
             self.model_queue = model_queue
         else:
             self.model_queue = [
-                "gemini-3.1-flash-lite", 
-                "gemini-2.0-flash-lite-preview",
-                "gemini-2.0-flash-exp", 
+                "gemini-1.5-flash", 
                 "gemini-2.0-flash",
-                "gemini-3.5-flash",
-                "gemini-1.5-flash"
+                "gemini-2.0-flash-exp", 
+                "gemini-2.0-flash-lite-preview",
+                "gemini-3.5-flash"
             ]
         self.current_model_idx = 0
 
@@ -55,13 +54,9 @@ class ResearchAgent:
         raise Exception("All fallback models exhausted.")
 
     def _call_model_without_retry(self, model_name, message):
-        # Prefix with 'models/' if not present
-        model_id = model_name if model_name.startswith("models/") else f"models/{model_name}"
-        # Ensure it doesn't have a double prefix if 'models/' was already there
-        model_id = model_id.replace("models/models/", "models/")
-        
+        # The google-genai library accepts the model name directly.
         response = self.client.models.generate_content(
-            model=model_id,
+            model=model_name,
             contents=message,
             config={"system_instruction": self.system_instruction}
         )
