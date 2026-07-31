@@ -187,19 +187,27 @@ resume_run() {
     else
         if [ -n "$project_dir" ]; then
             local rel_project_dir="results/$(basename "$project_dir")"
-            docker run -d --user "$(id -u):$(id -g)" -e HOME=/tmp -e GEMINI_CLI_APPROVAL_MODE=yolo -e GEMINI_CLI_TRUST_WORKSPACE=true --name "$container_name" \
-                -v "$(pwd):/app" \
-                -v "${run_dir}:/app/results" \
-                -w /app \
-                -e GOOGLE_API_KEY="${GOOGLE_API_KEY}" \
-                -e GITHUB_TOKEN="${GITHUB_TOKEN}" \
-                python:3.10-slim \
-                bash -c 'pip install google-genai tenacity && python main.py --resume "$1"' _ "$rel_project_dir"
-
+            local docker_args=(
+                "-d"
+                "--user" "$(id -u):$(id -g)"
+                "-e" "HOME=/tmp"
+                "-e" "GEMINI_CLI_APPROVAL_MODE=yolo"
+                "-e" "GEMINI_CLI_TRUST_WORKSPACE=true"
+                "--name" "$container_name"
+                "-v" "$(pwd):/app"
+                "-v" "${run_dir}:/app/results"
+                "-w" "/app"
+                "-e" "GOOGLE_API_KEY=${GOOGLE_API_KEY:-}"
+                "-e" "GITHUB_TOKEN=${GITHUB_TOKEN:-}"
+                "python:3.10-slim"
+                "bash" "-c" "pip install --user google-genai tenacity && python main.py --resume \"\$1\"" "_" "$rel_project_dir"
+            )
+            docker run "${docker_args[@]}"
         else
             echo "Error: Could not find project dir to resume in $run_dir"
             exit 1
         fi
+    fi
     fi
 
     echo "Resumed run $run_id"
