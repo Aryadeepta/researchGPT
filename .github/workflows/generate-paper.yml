@@ -1,0 +1,36 @@
+name: Generate Research Paper
+on:
+  workflow_dispatch:
+    inputs:
+      run_dir:
+        description: 'Path to the finished research run directory (e.g., results/multi_agent_...)'
+        required: true
+      runner:
+        description: 'Runner (cloud or laptop)'
+        required: false
+        default: 'cloud'
+        type: choice
+        options:
+          - cloud
+          - laptop
+
+jobs:
+  generate:
+    runs-on:
+      - self-hosted
+      - linux
+      - research-control
+      - ${{ github.event.inputs.runner || 'cloud' }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Generate Paper
+        run: scripts/generate-paper --run-dir "${{ github.event.inputs.run_dir }}"
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          
+      - name: Upload Paper Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: paper-draft
+          path: "${{ github.event.inputs.run_dir }}/paper_draft/"
