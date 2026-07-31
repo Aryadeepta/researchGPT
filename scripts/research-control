@@ -179,7 +179,7 @@ resume_run() {
 
     local project_dir=""
     if [ -d "$run_dir" ]; then
-        project_dir=$(find "$run_dir" -maxdepth 1 -type d -name "multi_agent_*" | head -n 1)
+        project_dir=$(find "$run_dir" -maxdepth 1 -type d -name "multi_agent_*" -printf '%T@ %p\n' | sort -n | cut -d' ' -f2- | tail -n 1)
     fi
 
     if docker ps -a --format '{{.Names}}' | grep -Eq "^${container_name}$"; then
