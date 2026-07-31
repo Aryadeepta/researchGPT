@@ -237,7 +237,11 @@ class ResearchOrchestrator:
 
         # Generate Paper
         print("\n--- Stage: Formal Paper Drafting (LaTeX) ---")
-        paper_output = self.coder.chat(PAPER_DRAFTING_PROMPT.format(research_context=self.state['context']))
+        
+        # Sanitize the context to prevent .format() from misinterpreting braces
+        safe_context = self.state['context'].replace("{", "{{").replace("}", "}}")
+        
+        paper_output = self.coder.chat(PAPER_DRAFTING_PROMPT.format(research_context=safe_context))
         
         draft_dir = os.path.join(self.project_dir, "paper_draft")
         os.makedirs(draft_dir, exist_ok=True)
