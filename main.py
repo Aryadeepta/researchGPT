@@ -85,11 +85,11 @@ class ResearchOrchestrator:
 
     def run(self, field=None, resume=False, interactive=False):
         if resume:
-            print(f"DEBUG: Resuming project in {self.project_dir}. Current state index: {self.state.get('idx')}")
-            print(f"DEBUG: Total steps: {len(self.state.get('steps', []))}")
+            print(f"DEBUG: Resuming project in {self.project_dir}. Current state index: {self.state.get('idx')}", flush=True)
+            print(f"DEBUG: Total steps: {len(self.state.get('steps', []))}", flush=True)
         else:
             # INTERACTIVE TOPIC SELECTION
-            print("\n--- Topic Selection ---")
+            print("\n--- Topic Selection ---", flush=True)
             print(f"Generating research topics for field: {field}...")
             topic_options_text = self.planner.chat(TOPIC_SELECTION_PROMPT.format(field=field))
             cleaned_json = re.sub(r'```json|```', '', topic_options_text).strip()
@@ -147,14 +147,15 @@ class ResearchOrchestrator:
             self.save_state()
 
         # 2. Execution Phase
-        print("\n--- Stage: Execution ---")
+        print("\n--- Stage: Execution ---", flush=True)
+        print(f"DEBUG: Starting execution loop, index {self.state['idx']} of {len(self.state['steps'])}", flush=True)
         while self.state["idx"] < len(self.state["steps"]):
             self.check_stop()
             step = self.state["steps"][self.state["idx"]]
             goal = step.get("goal", "Complete the task.")
             goal_reached = False
             
-            print(f"\n--- Starting Step: {step['step']} ---")
+            print(f"\n--- Starting Step: {step['step']} ---", flush=True)
             
             while not goal_reached:
                 self.check_stop()
