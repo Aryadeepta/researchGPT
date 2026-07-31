@@ -54,9 +54,11 @@ class ResearchAgent:
         raise Exception("All fallback models exhausted.")
 
     def _call_model_without_retry(self, model_name, message):
-        # The google-genai library accepts the model name directly.
+        # Prefix with 'models/' if not present to ensure 404 errors are avoided.
+        model_id = model_name if model_name.startswith("models/") else f"models/{model_name}"
+        
         response = self.client.models.generate_content(
-            model=model_name,
+            model=model_id,
             contents=message,
             config={"system_instruction": self.system_instruction}
         )
