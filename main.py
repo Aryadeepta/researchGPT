@@ -235,19 +235,23 @@ class ResearchOrchestrator:
             self.save_state()
         # 3. Finalization & QA
         # After execution loop finishes:
-        print("\n--- Research Complete ---")
+        print("\n--- Research Complete ---", flush=True)
+        print("DEBUG: Before _notify_completion", flush=True)
         self._notify_completion()
+        print("DEBUG: After _notify_completion", flush=True)
 
         submission_dir = os.path.join(self.project_dir, "submission")
         os.makedirs(submission_dir, exist_ok=True)
 
         # Generate Paper
-        print("\n--- Stage: Formal Paper Drafting (LaTeX) ---")
+        print("\n--- Stage: Formal Paper Drafting (LaTeX) ---", flush=True)
         try:
+            print("DEBUG: Before LLM chat for paper drafting", flush=True)
             # Sanitize the context to prevent .format() from misinterpreting braces
             safe_context = self.state['context'].replace("{", "{{").replace("}", "}}")
             
             paper_output = self.coder.chat(PAPER_DRAFTING_PROMPT.format(research_context=safe_context))
+            print("DEBUG: After LLM chat for paper drafting", flush=True)
             
             draft_dir = os.path.join(self.project_dir, "paper_draft")
             os.makedirs(draft_dir, exist_ok=True)
@@ -260,12 +264,12 @@ class ResearchOrchestrator:
                 with open(os.path.join(draft_dir, filename), "w") as f:
                     f.write(content)
             
-            print(f"LaTeX paper draft successfully generated in: {draft_dir}")
+            print(f"LaTeX paper draft successfully generated in: {draft_dir}", flush=True)
         except Exception as e:
-            print(f"CRITICAL ERROR in Paper Drafting: {e}")
+            print(f"CRITICAL ERROR in Paper Drafting: {e}", flush=True)
             traceback.print_exc()
         
-        print(f"\nFinal submission package ready in: {submission_dir}")
+        print(f"\nFinal submission package ready in: {submission_dir}", flush=True)
         
         # Copy artifacts to submission folder
         for f in os.listdir(self.project_dir):
