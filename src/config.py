@@ -75,16 +75,24 @@ Return ONLY JSON:
 """
 
 MAIN_TEX_PROMPT = """
-Create a `main.tex` file content based on the following sections: {sections}.
-The LaTeX code should use \\documentclass{{{latex_class}}} and include all required packages for academic papers.
-Include \\input{{}} commands for each section.
-Return ONLY the LaTeX code.
+Create a `main.tex` file content for a paper titled '{topic}'.
+Structure:
+- Use \\documentclass{{{latex_class}}}
+- Include essential packages for math and academic formatting (amsmath, amssymb, graphicx, etc.).
+- Use \\input{{sections/filename}} for each of these sections: {sections}.
+- Do NOT include \\section{{}} headers in this file. Only the document structure and input commands.
+Return ONLY the LaTeX code for main.tex.
 """
 
 SECTION_DRAFTING_PROMPT = """
 Draft the content for the {section_name} section of a paper titled '{topic}'.
-Ensure it is professional, academic, and detailed. Use LaTeX for math.
-Context:
+
+Requirements:
+- Structure: Start with \\section{{{section_name_title}}}. Do NOT include documentclass or begin/end document.
+- Depth & Length: This is a high-magnitude discovery. Be exhaustive. 
+    - Methodology/Results/Literature Review: Aim for 1500+ words per section. Provide detailed, rigorous mathematical derivations, comprehensive analysis, and extensive context. Do not generalize or summarize.
+- Content: Use LaTeX for all math ($...$, $$...$$). Provide robust argumentation.
+- Context:
 {research_context}
 
 Return ONLY the LaTeX content for this section.
