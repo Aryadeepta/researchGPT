@@ -23,5 +23,11 @@ if [ ! -d "$run_dir" ]; then
 fi
 
 # Use docker to run the draft_paper method
-docker run --rm -v "$(pwd):/app" -w /app -e GOOGLE_API_KEY="${GOOGLE_API_KEY:-}" python:3.10-slim \
+# Mounting the research-agent-data directory into the container
+docker run --rm \
+    -v "$(pwd):/app" \
+    -v "/home/aryad/research-agent-data:/home/aryad/research-agent-data" \
+    -w /app \
+    -e GOOGLE_API_KEY="${GOOGLE_API_KEY:-}" \
+    python:3.10-slim \
 bash -c "pip install --user google-genai tenacity pydantic requests httpx google-auth websockets anyio annotated-types typing-inspection charset-normalizer urllib3 cffi pyasn1 pycparser cryptography && python3 -c 'from main import ResearchOrchestrator; orch = ResearchOrchestrator(); orch.load_state(\"$run_dir\"); orch.draft_paper()'"
