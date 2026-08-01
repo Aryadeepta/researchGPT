@@ -30,4 +30,4 @@ docker run --rm \
     -v "/home/aryad/research-agent-data:/home/aryad/research-agent-data" \
     -e GOOGLE_API_KEY="${GOOGLE_API_KEY:-}" \
     paper-gen-image \
-    -c 'from main import ResearchOrchestrator; orch = ResearchOrchestrator(); orch.load_state("'"$run_dir"'"); orch.draft_paper()'
+    -c 'import shutil, os; [shutil.rmtree(os.path.join(r, d)) for r, d, f in os.walk("/app") if d == "__pycache__"]; from main import ResearchOrchestrator; orch = ResearchOrchestrator(); orch.load_state("'"$run_dir"'"); orch.draft_paper()'
