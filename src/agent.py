@@ -10,6 +10,7 @@ class ResearchAgent:
         if not api_key:
             raise ValueError("GOOGLE_API_KEY not set.")
         self.client = genai.Client(api_key=api_key)
+
         self.system_instruction = system_instruction
         # 5-tier downgrade strategy starting from cheapest/most efficient
         if model_queue:
