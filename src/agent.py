@@ -54,6 +54,7 @@ class ResearchAgent:
         raise Exception("All fallback models exhausted.")
 
     def _call_model_without_retry(self, model_name, message):
+        print(f"DEBUG: Calling model {model_name}", flush=True)
         # Prefix with 'models/' if not present to ensure 404 errors are avoided.
         model_id = model_name if model_name.startswith("models/") else f"models/{model_name}"
         
@@ -62,6 +63,7 @@ class ResearchAgent:
             contents=message,
             config={"system_instruction": self.system_instruction}
         )
+        print(f"DEBUG: Model {model_name} response received", flush=True)
         return response.text
 
 class CodeExecutor:

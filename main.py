@@ -225,30 +225,38 @@ class ResearchOrchestrator:
             self.state["idx"] += 1
             self.save_state()
     def draft_paper(self):
-        print("Orchestrator: Implementing structured LaTeX drafting...")
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        draft_dir = os.path.join(self.project_dir, f"paper_draft_{timestamp}")
+        print("DEBUG: Entering draft_paper", flush=True)
+        draft_dir = os.path.join(self.project_dir, "paper_draft")
+        print(f"DEBUG: draft_dir={draft_dir}", flush=True)
         os.makedirs(draft_dir, exist_ok=True)
         
         # 1. Research Style
+        print("DEBUG: Calling style guide prompt", flush=True)
         style_guide_json = self.coder.chat(STYLE_GUIDE_PROMPT.format(topic=self.state['topic']))
+        print("DEBUG: Style guide received", flush=True)
         cleaned_json = re.sub(r'```json|```', '', style_guide_json).strip()
         style_data = json.loads(cleaned_json)
+        print("DEBUG: Style data parsed", flush=True)
         
         # 2. Generate main.tex
+        print("DEBUG: Calling main.tex prompt", flush=True)
         main_tex = self.coder.chat(MAIN_TEX_PROMPT.format(sections=style_data['sections'], latex_class=style_data['latex_class']))
+        print("DEBUG: main.tex received", flush=True)
         with open(os.path.join(draft_dir, "main.tex"), "w") as f:
             f.write(main_tex)
+        print("DEBUG: main.tex written", flush=True)
             
         # 3. Generate Sections
         safe_context = self.state['context'].replace("{", "{{").replace("}", "}}")
         for section in style_data['sections']:
-            print(f"Drafting section: {section}")
+            print(f"DEBUG: Drafting section: {section}", flush=True)
             section_content = self.coder.chat(SECTION_DRAFTING_PROMPT.format(section_name=section, topic=self.state['topic'], research_context=safe_context))
+            print(f"DEBUG: Section {section} received", flush=True)
             with open(os.path.join(draft_dir, f"{section}.tex"), "w") as f:
                 f.write(section_content)
+            print(f"DEBUG: Section {section} written", flush=True)
         
-        print(f"LaTeX project generated in {draft_dir}")
+        print(f"LaTeX project generated in {draft_dir}", flush=True)
 
     def run(self, field=None, resume=False, interactive=False):
         # ... (rest of code)
