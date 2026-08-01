@@ -30,4 +30,4 @@ docker run --rm \
     -w /app \
     -e GOOGLE_API_KEY="${GOOGLE_API_KEY:-}" \
     python:3.10-slim \
-bash -c "pip install --user google-genai tenacity pydantic requests httpx google-auth websockets anyio annotated-types typing-inspection charset-normalizer urllib3 cffi pyasn1 pycparser cryptography && python3 -c 'from main import ResearchOrchestrator; orch = ResearchOrchestrator(); orch.load_state(\"$run_dir\"); orch.draft_paper()'"
+bash -c "pip install --user google-genai tenacity pydantic requests httpx google-auth websockets anyio annotated-types typing-inspection charset-normalizer urllib3 cffi pyasn1 pycparser cryptography && export PYTHONPATH=\$PYTHONPATH:/app && python3 -c 'from main import ResearchOrchestrator; orch = ResearchOrchestrator(); orch.load_state(\"$run_dir\"); orch.draft_paper()'"
