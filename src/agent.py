@@ -23,40 +23,40 @@ class ResearchAgent:
             ]
             self.current_model_idx = 0
 
-            @retry(
-            stop=stop_after_attempt(10),
-            # Wait exponentially, adding 60s min, max 600s, with a random jitter
-            wait=wait_exponential(multiplier=2, min=60, max=600),
-            retry=retry_if_exception_type(Exception),
-            reraise=True
-            )
-            def chat(self, message):
-            # Try models in sequence until one succeeds
-            for i in range(len(self.model_queue)):
-                model_to_try = self.model_queue[(self.current_model_idx + i) % len(self.model_queue)]
-                try:
-                    print(f"DEBUG: Calling model {model_to_try}", flush=True)
-                    response = self.client.models.generate_content(
-                        model=model_to_try,
-                        contents=message,
-                        config={"system_instruction": self.system_instruction}
-                    )
-                    print(f"DEBUG: Model {model_to_try} response received", flush=True)
+    @retry(
+        stop=stop_after_attempt(10),
+        # Wait exponentially, adding 60s min, max 600s, with a random jitter
+        wait=wait_exponential(multiplier=2, min=60, max=600),
+        retry=retry_if_exception_type(Exception),
+        reraise=True
+    )
+    def chat(self, message):
+        # Try models in sequence until one succeeds
+        for i in range(len(self.model_queue)):
+            model_to_try = self.model_queue[(self.current_model_idx + i) % len(self.model_queue)]
+            try:
+                print(f"DEBUG: Calling model {model_to_try}", flush=True)
+                response = self.client.models.generate_content(
+                    model=model_to_try,
+                    contents=message,
+                    config={"system_instruction": self.system_instruction}
+                )
+                print(f"DEBUG: Model {model_to_try} response received", flush=True)
 
-                    # If successful, update the index for future calls
-                    self.current_model_idx = (self.current_model_idx + i) % len(self.model_queue)
-                    return response.text
-                except (ClientError, ServerError) as e:
-                    # Catch 429/404 (Client) or 503 (Server)
-                    code = getattr(e, 'code', None)
-                    if code in [429, 404, 503]:
-                        print(f"[!] Error {code} for {model_to_try}. Cycling to next model.", flush=True)
-                        continue
-                    raise e
+                # If successful, update the index for future calls
+                self.current_model_idx = (self.current_model_idx + i) % len(self.model_queue)
+                return response.text
+            except (ClientError, ServerError) as e:
+                # Catch 429/404 (Client) or 503 (Server)
+                code = getattr(e, 'code', None)
+                if code in [429, 404, 503]:
+                    print(f"[!] Error {code} for {model_to_try}. Cycling to next model.", flush=True)
+                    continue
+                raise e
 
-            # If we reach here, all models in queue failed
-            print("[!] All models exhausted. Retrying global queue in 60 seconds...", flush=True)
-            raise Exception("All fallback models exhausted.")
+        # If we reach here, all models in queue failed
+        print("[!] All models exhausted. Retrying global queue in 60 seconds...", flush=True)
+        raise Exception("All fallback models exhausted.")
 class CodeExecutor:
     @staticmethod
     def execute_python(code_str, project_dir):
