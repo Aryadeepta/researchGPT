@@ -92,6 +92,11 @@ Requirements:
 - Depth & Length: This is a high-magnitude discovery. Be exhaustive. 
     - Methodology/Results/Literature Review: Aim for 1500+ words per section. Provide detailed, rigorous mathematical derivations, comprehensive analysis, and extensive context. Do not generalize or summarize.
 - Content: Use LaTeX for all math ($...$, $$...$$). Provide robust argumentation.
+- Claim Provenance: You MUST verify all research claims against the provided Evidence Ledger.
+    - If a claim exists in the ledger and its status is 'UNVERIFIED', you MUST use the provided 'allowed_paper_language' for that claim. DO NOT state it as a result.
+    - If you include a claim not in the ledger, mark it clearly as HYPOTHESIS or ANLYTICAL_ESTIMATE.
+- Evidence Ledger:
+{evidence_ledger}
 - Context:
 {research_context}
 

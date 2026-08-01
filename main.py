@@ -231,6 +231,15 @@ class ResearchOrchestrator:
         sections_dir = os.path.join(draft_dir, "sections")
         os.makedirs(sections_dir, exist_ok=True)
         
+        # Load evidence ledger if exists
+        ledger_path = os.path.join(self.project_dir, "evidence_ledger.json")
+        if os.path.exists(ledger_path):
+            with open(ledger_path, "r") as f:
+                evidence_ledger = f.read()
+        else:
+            evidence_ledger = '{"claims": []}'
+            print("WARNING: No evidence ledger found. proceeding with empty ledger.")
+        
         # 1. Research Style
         print("DEBUG: Calling style guide prompt", flush=True)
         style_guide_json = self.coder.chat(STYLE_GUIDE_PROMPT.format(topic=self.state['topic']))
@@ -253,7 +262,7 @@ class ResearchOrchestrator:
             # Convert snake_case section name to Title Case for the section header
             section_title = section.replace("_", " ").title()
             
-            section_content = self.coder.chat(SECTION_DRAFTING_PROMPT.format(section_name=section, section_name_title=section_title, topic=self.state['topic'], research_context=safe_context))
+            section_content = self.coder.chat(SECTION_DRAFTING_PROMPT.format(section_name=section, section_name_title=section_title, topic=self.state['topic'], evidence_ledger=evidence_ledger, research_context=safe_context))
             with open(os.path.join(sections_dir, f"{section}.tex"), "w") as f:
                 f.write(section_content)
             print(f"DEBUG: Section {section} written", flush=True)
