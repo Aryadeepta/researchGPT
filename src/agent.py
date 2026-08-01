@@ -17,8 +17,9 @@ class ResearchAgent:
             self.model_queue = model_queue
         else:
             self.model_queue = [
-                "models/gemini-3.1-flash-lite"
+                "models/gemini-2.0-flash"
             ]
+
         self.current_model_idx = 0
     @retry(
         stop=stop_after_attempt(10),
