@@ -226,7 +226,8 @@ class ResearchOrchestrator:
             self.save_state()
     def draft_paper(self):
         print("Orchestrator: Implementing structured LaTeX drafting...")
-        draft_dir = os.path.join(self.project_dir, "paper_draft")
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        draft_dir = os.path.join(self.project_dir, f"paper_draft_{timestamp}")
         os.makedirs(draft_dir, exist_ok=True)
         
         # 1. Research Style
