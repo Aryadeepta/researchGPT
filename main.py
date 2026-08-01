@@ -231,16 +231,26 @@ class ResearchOrchestrator:
         os.makedirs(draft_dir, exist_ok=True)
         
         # 1. Research Style
-        print("DEBUG: Calling style guide prompt", flush=True)
-        style_guide_json = self.coder.chat(STYLE_GUIDE_PROMPT.format(topic=self.state['topic']))
+        print("DEBUG: Drafting paper using hardcoded model: models/gemini-3.1-flash-lite", flush=True)
+        # Using a direct call to test the model specifically
+        response = self.coder.client.models.generate_content(
+            model="models/gemini-3.1-flash-lite",
+            contents=STYLE_GUIDE_PROMPT.format(topic=self.state['topic']),
+            config={"system_instruction": self.coder.system_instruction}
+        )
+        style_guide_json = response.text
         print("DEBUG: Style guide received", flush=True)
         cleaned_json = re.sub(r'```json|```', '', style_guide_json).strip()
         style_data = json.loads(cleaned_json)
         print("DEBUG: Style data parsed", flush=True)
         
         # 2. Generate main.tex
-        print("DEBUG: Calling main.tex prompt", flush=True)
-        main_tex = self.coder.chat(MAIN_TEX_PROMPT.format(sections=style_data['sections'], latex_class=style_data['latex_class']))
+        response = self.coder.client.models.generate_content(
+            model="models/gemini-3.1-flash-lite",
+            contents=MAIN_TEX_PROMPT.format(sections=style_data['sections'], latex_class=style_data['latex_class']),
+            config={"system_instruction": self.coder.system_instruction}
+        )
+        main_tex = response.text
         print("DEBUG: main.tex received", flush=True)
         with open(os.path.join(draft_dir, "main.tex"), "w") as f:
             f.write(main_tex)
@@ -250,7 +260,12 @@ class ResearchOrchestrator:
         safe_context = self.state['context'].replace("{", "{{").replace("}", "}}")
         for section in style_data['sections']:
             print(f"DEBUG: Drafting section: {section}", flush=True)
-            section_content = self.coder.chat(SECTION_DRAFTING_PROMPT.format(section_name=section, topic=self.state['topic'], research_context=safe_context))
+            response = self.coder.client.models.generate_content(
+                model="models/gemini-3.1-flash-lite",
+                contents=SECTION_DRAFTING_PROMPT.format(section_name=section, topic=self.state['topic'], research_context=safe_context),
+                config={"system_instruction": self.coder.system_instruction}
+            )
+            section_content = response.text
             print(f"DEBUG: Section {section} received", flush=True)
             with open(os.path.join(draft_dir, f"{section}.tex"), "w") as f:
                 f.write(section_content)
