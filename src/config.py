@@ -130,7 +130,7 @@ For each step, include:
 - 'implementation_instruction': 'CRITICAL: Your Python code block MUST include file writing operations for EVERY file listed in expected_artifacts using: with open(filepath, "w") as f: f.write(content). Do not just print or log the content. If you fail to create the file, the pipeline will block.'
 
 Return ONLY the final JSON array of objects:
-[{"step": "...", "skill": "...", "description": "...", "goal": "...", "expected_artifacts": ["..."], "implementation_instruction": "..." }, ...]
+[{{ "step": "...", "skill": "...", "description": "...", "goal": "...", "expected_artifacts": ["..."], "implementation_instruction": "..." }}, ...]
 """
 
 
