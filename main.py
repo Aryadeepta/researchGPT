@@ -145,13 +145,24 @@ class ResearchOrchestrator:
             # Action Gating: Process reviewer instructions
             actions = [r['action'] for r in reviews]
             if "RETRY" in actions:
-                step["retry_count"] += 1
-                if step["retry_count"] >= 3:
-                    print(f"CRITICAL: Step '{step['step']}' reached max retries. Pausing.", flush=True)
+                current_retry_reasons = [r['reason'] for r in reviews if r['action'] == 'RETRY']
+                
+                # Check for consecutive identical errors
+                if step.get("last_retry_reasons") == current_retry_reasons:
+                    step["consecutive_retry_count"] = step.get("consecutive_retry_count", 0) + 1
+                else:
+                    step["consecutive_retry_count"] = 1
+                step["last_retry_reasons"] = current_retry_reasons
+                
+                step["retry_count"] = step.get("retry_count", 0) + 1
+                
+                if step["retry_count"] >= 3 or step["consecutive_retry_count"] >= 3:
+                    print(f"CRITICAL: Step '{step['step']}' failed (Reason: {current_retry_reasons}). Max retries or persistent error reached. Pausing.", flush=True)
                     self.state["status"] = "BLOCKED_RETRY_LIMIT_EXCEEDED"
                     self.save_state()
                     break # Pause
-                print(f"CRITICAL: Step '{step['step']}' requires RETRY ({step['retry_count']}/3). Reason: {[r['reason'] for r in reviews if r['action'] == 'RETRY']}", flush=True)
+                
+                print(f"CRITICAL: Step '{step['step']}' requires RETRY ({step['retry_count']}/3). Reason: {current_retry_reasons}", flush=True)
                 self.save_state()
                 continue
             elif "PIVOT" in actions:
@@ -169,10 +180,10 @@ class ResearchOrchestrator:
             import time
             time.sleep(10)
         # Finalization
-        if self.state.get("status") != "BLOCKED_ADVERSARIAL_FAILURE":
+        if self.state.get("status") == "RESEARCH_COMPLETE":
             self.draft_paper()
         else:
-            print("Research blocked due to adversarial failure. Skipping paper drafting.")
+            print(f"Research run status is '{self.state.get('status')}'. Skipping paper drafting.")
         self._notify_completion()
 
 def main():
