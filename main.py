@@ -280,6 +280,7 @@ class ResearchOrchestrator:
         # 3. Finalization & QA
         # After execution loop finishes:
         print("\n--- Research Complete ---", flush=True)
+        self.draft_paper()
         self._notify_completion()
         
         # QA Loop
