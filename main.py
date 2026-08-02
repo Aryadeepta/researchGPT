@@ -226,19 +226,19 @@ class ResearchOrchestrator:
             self.save_state()
     def draft_paper(self):
         print("Orchestrator: Implementing structured LaTeX drafting...")
+        from src.ledger import EvidenceLedger
+        ledger = EvidenceLedger(self.project_dir)
+        
+        if not ledger.is_paper_ready():
+            print("CRITICAL ERROR: Research not ready for paper drafting. Unverified claims exist in evidence_ledger.json.", flush=True)
+            return
+
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         draft_dir = os.path.join(self.project_dir, f"paper_draft_{timestamp}")
         sections_dir = os.path.join(draft_dir, "sections")
         os.makedirs(sections_dir, exist_ok=True)
         
-        # Load evidence ledger if exists
-        ledger_path = os.path.join(self.project_dir, "evidence_ledger.json")
-        if os.path.exists(ledger_path):
-            with open(ledger_path, "r") as f:
-                evidence_ledger = f.read()
-        else:
-            evidence_ledger = '{"claims": []}'
-            print("WARNING: No evidence ledger found. proceeding with empty ledger.")
+        evidence_ledger = json.dumps(ledger.data)
         
         # 1. Research Style
         print("DEBUG: Calling style guide prompt", flush=True)
