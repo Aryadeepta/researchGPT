@@ -123,6 +123,7 @@ class ResearchOrchestrator:
                     content = self.coder.chat(f"Task: {step['description']}. Goal: {step['goal']}.\nInstruction: {step.get('implementation_instruction', '')}\nProduce ONLY content for: {artifact_path}")
                     
                     full_path = os.path.join(self.project_dir, artifact_path)
+                    os.makedirs(os.path.dirname(full_path), exist_ok=True)
                     with open(full_path, "w") as f: f.write(content)
                     
                     reviews = self.adversary_board.review_claim(f"{step['step']} - {artifact_path}", "Artifact generated.", [artifact_path], self.state["idx"])
@@ -135,17 +136,18 @@ class ResearchOrchestrator:
                     self.state["status"] = "BLOCKED_RETRY_LIMIT_EXCEEDED"
                     self.save_state()
                     break
-
-            # PHASE 2: Adversarial Verification (Step-wide)
-            logs = "All artifacts generated and verified."
-            reviews = self.adversary_board.review_claim(step['step'], logs, actual_artifacts, self.state["idx"])
-            if any(r['action'] == "PIVOT" for r in reviews):
-                self.state["status"] = "BLOCKED_INVALID_METHOD"
+            else:
+                # Only if PHASE 1 succeeded for all artifacts
+                # PHASE 2: Adversarial Verification (Step-wide)
+                logs = "All artifacts generated and verified."
+                reviews = self.adversary_board.review_claim(step['step'], logs, actual_artifacts, self.state["idx"])
+                if any(r['action'] == "PIVOT" for r in reviews):
+                    self.state["status"] = "BLOCKED_INVALID_METHOD"
+                    self.save_state()
+                    sys.exit(1)
+                
+                self.state["idx"] += 1
                 self.save_state()
-                sys.exit(1)
-            
-            self.state["idx"] += 1
-            self.save_state()
         
         if self.state["idx"] >= len(self.state["steps"]):
             self.state["status"] = "RESEARCH_COMPLETE"
@@ -153,31 +155,6 @@ class ResearchOrchestrator:
             self.draft_paper()
         
         self._notify_completion()
-            if missing: logs += f"\nCRITICAL: Auto-created missing artifacts: {missing}"
-            
-            self.state["context"] += f"\nStep {step['step']} logs: {logs}"
-            
-            # Adversarial Check
-            reviews = self.adversary_board.review_claim(step['step'], logs, actual, self.state["idx"])
-            
-            # Action Gating: Graph navigation
-            # Default: Retry
-            next_idx = self.state["idx"]
-            
-            # If any reviewer dictates PIVOT, stop
-            if any(r['action'] == "PIVOT" for r in reviews):
-                self.state["status"] = "BLOCKED_INVALID_METHOD"
-                self.save_state()
-                sys.exit(1)
-                
-            # If all reviewers agree to ADVANCE, move forward
-            if all(r['action'] == "ADVANCE" for r in reviews):
-                step["retry_count"] = 0
-                next_idx = self.state["idx"] + 1
-            else:
-                # RETRY or Mixed - stay on current step (retry)
-                step["retry_count"] += 1
-                if step["retry_count"] >= 3:
                     self.state["status"] = "BLOCKED_RETRY_LIMIT_EXCEEDED"
                     self.save_state()
                     break
