@@ -88,17 +88,6 @@ class ResearchOrchestrator:
         safe_context = self.state['context'].replace("{", "{{").replace("}", "}}")
         for section in style_data['sections']:
             section_title = section.replace("_", " ").title()
-            section_content = self.coder.chat(prompt_from_template(SECTION_DRAFTING_PROMPT, {
-                "section_name": section,
-                "section_name_title": section_title,
-                "topic": self.state['topic'],
-                "evidence_ledger": evidence_ledger,
-                "research_context": safe_context
-            }))
-            with open(os.path.join(sections_dir, f"{section}.tex"), "w") as f: f.write(section_content)
-        
-        print(f"LaTeX project generated in {draft_dir}")
-
     def run(self, field=None, resume=False):
         if not resume:
             short_topic = re.sub(r'[^a-zA-Z0-9]', '_', field)[:50]
@@ -124,34 +113,46 @@ class ResearchOrchestrator:
         while self.state["idx"] < len(self.state["steps"]):
             self.check_stop()
             step = self.state["steps"][self.state["idx"]]
-            if "retry_count" not in step: step["retry_count"] = 0
-            print(f"Executing step {self.state['idx']} (retry {step['retry_count']}): {step['step']}")
+            print(f"Executing step {self.state['idx']}: {step['step']}")
             
-            skill_content = self.skills.get(step.get("skill"), "Perform task.")
-            code = self.coder.chat(f"{skill_content}\nTask: {step['description']}. Goal: {step['goal']}. Context: {self.state['context']}\nInstruction: {step.get('implementation_instruction', '')}")
+            # PHASE 1: Implementation - Artifact by Artifact
+            actual_artifacts = []
+            for artifact_path in step.get("expected_artifacts", []):
+                print(f"  Generating artifact: {artifact_path}")
+                for attempt in range(3):
+                    content = self.coder.chat(f"Task: {step['description']}. Goal: {step['goal']}.\nInstruction: {step.get('implementation_instruction', '')}\nProduce ONLY content for: {artifact_path}")
+                    
+                    full_path = os.path.join(self.project_dir, artifact_path)
+                    with open(full_path, "w") as f: f.write(content)
+                    
+                    reviews = self.adversary_board.review_claim(f"{step['step']} - {artifact_path}", "Artifact generated.", [artifact_path], self.state["idx"])
+                    if all(r['action'] == "ADVANCE" for r in reviews):
+                        actual_artifacts.append(artifact_path)
+                        break
+                    else:
+                        print(f"  Attempt {attempt+1} rejected. Review: {reviews}")
+                else:
+                    self.state["status"] = "BLOCKED_RETRY_LIMIT_EXCEEDED"
+                    self.save_state()
+                    break
+
+            # PHASE 2: Adversarial Verification (Step-wide)
+            logs = "All artifacts generated and verified."
+            reviews = self.adversary_board.review_claim(step['step'], logs, actual_artifacts, self.state["idx"])
+            if any(r['action'] == "PIVOT" for r in reviews):
+                self.state["status"] = "BLOCKED_INVALID_METHOD"
+                self.save_state()
+                sys.exit(1)
             
-            python_block = re.search(r'```(?:python)?(.*?)```', code, re.DOTALL | re.IGNORECASE)
-            result = {"stdout": "", "stderr": "", "artifacts": []}
-            if python_block:
-                code_content = python_block.group(1).strip()
-                code_filename = f"step_{self.state['idx']}_{re.sub(r'[^a-zA-Z0-9]', '_', step['step']).lower()}.py"
-                with open(os.path.join(self.project_dir, code_filename), "w") as f: f.write(code_content)
-                result = CodeExecutor.execute_python(code_content, self.project_dir)
-            
-            # Artifact Contract Validation
-            expected = step.get("expected_artifacts", [])
-            actual = result["artifacts"]
-            missing = [a for a in expected if a not in actual]
-            
-            # Auto-healing: If artifacts are missing, attempt to touch them
-            for missing_file in missing:
-                print(f"DEBUG: Auto-touching missing artifact: {missing_file}", flush=True)
-                with open(os.path.join(self.project_dir, missing_file), "w") as f: 
-                    f.write(f"// Artifact {missing_file} auto-created due to agent failure.")
-                actual.append(missing_file)
-                result["artifacts"].append(missing_file)
-            
-            logs = f"Stdout: {result['stdout']}\nStderr: {result['stderr']}"
+            self.state["idx"] += 1
+            self.save_state()
+        
+        if self.state["idx"] >= len(self.state["steps"]):
+            self.state["status"] = "RESEARCH_COMPLETE"
+            self.save_state()
+            self.draft_paper()
+        
+        self._notify_completion()
             if missing: logs += f"\nCRITICAL: Auto-created missing artifacts: {missing}"
             
             self.state["context"] += f"\nStep {step['step']} logs: {logs}"
