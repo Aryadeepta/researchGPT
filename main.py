@@ -15,7 +15,7 @@ from src.rag import ProjectRAG, summarize_project
 
 class ResearchOrchestrator:
     def __init__(self, project_dir=None):
-        self.state = {"steps": [], "idx": 0, "context": "", "topic": "", "proposal": ""}
+        self.state = {"steps": [], "idx": 0, "context": "", "topic": "", "proposal": "", "status": "PLANNED"}
         self.project_dir = project_dir
         if self.project_dir:
             self.state["project_dir"] = self.project_dir
@@ -96,8 +96,13 @@ class ResearchOrchestrator:
             self.state["project_dir"] = self.project_dir
             self.state["topic"] = field
             workflow_json = self.planner.chat(PLANNING_AND_CRITIQUE_PROMPT.format(topic=field, skills_context=self.load_skills()))
-            self.state["steps"] = json.loads(re.sub(r'```json|```', '', workflow_json).strip())
+            workflow_data = json.loads(re.sub(r'```json|```', '', workflow_json).strip())
+            if isinstance(workflow_data, dict) and "steps" in workflow_data:
+                self.state["steps"] = workflow_data["steps"]
+            else:
+                self.state["steps"] = workflow_data
             self.state["proposal"] = self.planner.chat(f"Create proposal for {field}")
+            self.state["status"] = "IMPLEMENTING"
             self.save_state()
 
         while self.state["idx"] < len(self.state["steps"]):
@@ -118,72 +123,46 @@ class ResearchOrchestrator:
                 # Persist the artifact
                 code_filename = f"step_{self.state['idx']}_{re.sub(r'[^a-zA-Z0-9]', '_', step['step']).lower()}.py"
                 file_path = os.path.join(self.project_dir, code_filename)
-                with open(file_path, "w") as f:
-                    f.write(code_content)
-                print(f"Artifact saved: {file_path}")
-                
+                with open(file_path, "w") as f: f.write(code_content)
                 result = CodeExecutor.execute_python(code_content, self.project_dir)
-                
-                # Auto-healing for missing dependencies
-                if "ModuleNotFoundError" in result['stderr']:
-                    match = re.search(r"ModuleNotFoundError: No module named '([^']+)'", result['stderr'])
-                    if match:
-                        missing_module = match.group(1)
-                        print(f"DEBUG: Missing dependency detected: {missing_module}. Installing...", flush=True)
-                        CodeExecutor.execute_shell(f"pip install --user {missing_module}", self.project_dir)
-                        # Retry execution
-                        result = CodeExecutor.execute_python(code_content, self.project_dir)
+            
+            # Artifact Contract Validation
+            expected = step.get("expected_artifacts", [])
+            actual = result["artifacts"]
+            missing = [a for a in expected if a not in actual]
+            if missing:
+                print(f"CRITICAL: Missing artifacts: {missing}")
+                result["stderr"] += f"\nCRITICAL: Missing artifacts: {missing}"
             
             logs = f"Stdout: {result['stdout']}\nStderr: {result['stderr']}"
             self.state["context"] += f"\nStep {step['step']} logs: {logs}"
             
-            # Adversarial Check with Artifact Gating
-            print(f"DEBUG: Running adversarial review for step {step['step']}", flush=True)
+            # Adversarial Check
             reviews = self.adversary_board.review_claim(step['step'], logs, result['artifacts'])
-            self.state["context"] += f"\nReviews: {reviews}"
             
-            # Action Gating: Process reviewer instructions
+            # Action Gating
             actions = [r['action'] for r in reviews]
-            if "RETRY" in actions:
-                current_retry_reasons = [r['reason'] for r in reviews if r['action'] == 'RETRY']
-                
-                # Check for consecutive identical errors
-                if step.get("last_retry_reasons") == current_retry_reasons:
-                    step["consecutive_retry_count"] = step.get("consecutive_retry_count", 0) + 1
-                else:
-                    step["consecutive_retry_count"] = 1
-                step["last_retry_reasons"] = current_retry_reasons
-                
-                step["retry_count"] = step.get("retry_count", 0) + 1
-                
-                if step["retry_count"] >= 3 or step["consecutive_retry_count"] >= 3:
-                    print(f"CRITICAL: Step '{step['step']}' failed (Reason: {current_retry_reasons}). Max retries or persistent error reached. Pausing.", flush=True)
+            if "RETRY" in actions or missing:
+                step["retry_count"] += 1
+                if step["retry_count"] >= 3:
                     self.state["status"] = "BLOCKED_RETRY_LIMIT_EXCEEDED"
                     self.save_state()
-                    break # Pause
-                
-                print(f"CRITICAL: Step '{step['step']}' requires RETRY ({step['retry_count']}/3). Reason: {current_retry_reasons}", flush=True)
+                    break
                 self.save_state()
                 continue
             elif "PIVOT" in actions:
-                print(f"CRITICAL: Step '{step['step']}' requires PIVOT. Reason: {[r['reason'] for r in reviews if r['action'] == 'PIVOT']}", flush=True)
                 self.state["status"] = "BLOCKED_INVALID_METHOD"
                 self.save_state()
                 sys.exit(1)
             
-            # If all ADVANCE, proceed
-            step["retry_count"] = 0 # Reset
             self.state["idx"] += 1
             self.save_state()
-            
-            # Throttle to respect rate limits
-            import time
-            time.sleep(10)
-        # Finalization
-        if self.state.get("status") == "RESEARCH_COMPLETE":
+        
+        if self.state["idx"] >= len(self.state["steps"]):
+            self.state["status"] = "RESEARCH_COMPLETE"
+            self.save_state()
             self.draft_paper()
-        else:
-            print(f"Research run status is '{self.state.get('status')}'. Skipping paper drafting.")
+        
         self._notify_completion()
 
 def main():
