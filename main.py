@@ -127,13 +127,16 @@ class ResearchOrchestrator:
             print(f"Selected topic: {field}")
 
         # 1. Initialization/Planning
+        print("DEBUG: Reached Initialization/Planning stage", flush=True)
         print("\n--- Stage: Planning ---")
         print("Planner: Designing workflow (with iterative novelty/feasibility assessment)...")
         skills_context = self.load_skills()
+        print(f"DEBUG: Calling planner.chat for topic: {field}", flush=True)
         workflow_json = self.planner.chat(PLANNING_AND_CRITIQUE_PROMPT.format(topic=field, skills_context=skills_context))
+        print(f"DEBUG: Planner response: {workflow_json[:100]}...", flush=True)
         cleaned_json = re.sub(r'```json|```', '', workflow_json).strip()
         self.state["steps"] = json.loads(cleaned_json)
-        
+        print(f"DEBUG: Steps initialized: {len(self.state['steps'])}", flush=True)
         print("\n--- Research Workflow Plan ---")
         for i, step in enumerate(self.state["steps"]):
             print(f"{i+1}. {step['step']} (Skill: {step.get('skill')})")
