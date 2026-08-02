@@ -59,15 +59,22 @@ class ResearchAgent:
 class CodeExecutor:
     @staticmethod
     def execute_python(code_str, project_dir):
-        # 1. Identify and extract shell commands (e.g., #!pip install ... or lines starting with pip install)
+        # Define shell command prefixes to extract from Python code
+        shell_prefixes = ("pip ", "apt ", "git ", "curl ", "wget ", "echo ", "mkdir ", "cp ", "mv ")
+        
         shell_commands = []
         python_lines = []
         
         for line in code_str.splitlines():
             line_stripped = line.strip()
-            if line_stripped.startswith("pip install"):
+            if not line_stripped:
+                python_lines.append(line)
+                continue
+            
+            # Extract shell commands
+            if line_stripped.startswith(shell_prefixes):
                 shell_commands.append(line_stripped)
-            elif line_stripped.startswith("#!") and "pip" in line_stripped:
+            elif line_stripped.startswith("#!") and any(p in line_stripped for p in ["pip", "apt", "git"]):
                 shell_commands.append(line_stripped.replace("#!", "").strip())
             else:
                 python_lines.append(line)
@@ -75,7 +82,7 @@ class CodeExecutor:
         # 2. Execute shell commands first
         logs = ""
         for cmd in shell_commands:
-            print(f"DEBUG: Executing shell dependency install: {cmd}", flush=True)
+            print(f"DEBUG: Executing shell command from Python block: {cmd}", flush=True)
             res = CodeExecutor.execute_shell(cmd, project_dir)
             logs += res + "\n"
         
