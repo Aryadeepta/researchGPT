@@ -25,11 +25,14 @@ class ResearchOrchestrator:
             self.state["project_dir"] = self.project_dir
         self.planner = ResearchAgent("You are a research planner. Output JSON workflows.", model_queue=SMART_QUEUE)
         self.coder = ResearchAgent("You are a Python coder. Output runnable code only. For every expected artifact, you MUST implement Python code to write it to disk using 'with open(filename, \"w\") as f: f.write(content)'. Do not omit this.", model_queue=FAST_QUEUE)
-        self.adversary_board = AdversarialBoard(topic=field)
+        self.adversary_board = AdversarialBoard(topic="general research")
         self.skills = {}
         self.stop_requested = False
         signal.signal(signal.SIGINT, self._handle_stop_signal)
         signal.signal(signal.SIGTERM, self._handle_stop_signal)
+
+    def set_topic(self, topic):
+        self.adversary_board = AdversarialBoard(topic=topic)
 
     def _handle_stop_signal(self, signum, frame):
         print(f"Stop signal received ({signum}).")
@@ -101,6 +104,7 @@ class ResearchOrchestrator:
 
     def run(self, field=None, resume=False):
         if not resume:
+            self.set_topic(field)
             short_topic = re.sub(r'[^a-zA-Z0-9]', '_', field)[:50]
             self.project_dir = os.path.join("results", f"multi_agent_{short_topic}_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
             os.makedirs(self.project_dir, exist_ok=True)
