@@ -8,8 +8,10 @@ import traceback
 import signal
 from datetime import datetime
 from src.agent import ResearchAgent, CodeExecutor
+from src.ledger import EvidenceLedger
+from src.adversarial import AdversarialBoard
 from src.config import *
-from src.rag import ProjectRAG, summarize_project
+# ... (rest of imports)
 
 class ResearchOrchestrator:
     def __init__(self, project_dir=None):
@@ -19,14 +21,15 @@ class ResearchOrchestrator:
         print("DEBUG: Initializing agents")
         self.planner = ResearchAgent("You are a research planner. Output JSON workflows.", model_queue=SMART_QUEUE)
         self.coder = ResearchAgent("You are a Python coder. Output runnable code only.", model_queue=FAST_QUEUE)
-        self.adversary = ResearchAgent("You are an adversarial reviewer. Critique results and check novelty.", model_queue=SMART_QUEUE)
+        self.adversary_board = AdversarialBoard()
         print("DEBUG: Agents initialized")
         self.skills = {}
         self.stop_requested = False
         print("DEBUG: ResearchOrchestrator.__init__ finished")
-        
+
         signal.signal(signal.SIGINT, self._handle_stop_signal)
         signal.signal(signal.SIGTERM, self._handle_stop_signal)
+
         
     def _handle_stop_signal(self, signum, frame):
         print(f"Stop signal received ({signum}). Will checkpoint and stop soon.")
