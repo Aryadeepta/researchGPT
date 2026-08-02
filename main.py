@@ -88,6 +88,17 @@ class ResearchOrchestrator:
         safe_context = self.state['context'].replace("{", "{{").replace("}", "}}")
         for section in style_data['sections']:
             section_title = section.replace("_", " ").title()
+            section_content = self.coder.chat(prompt_from_template(SECTION_DRAFTING_PROMPT, {
+                "section_name": section,
+                "section_name_title": section_title,
+                "topic": self.state['topic'],
+                "evidence_ledger": evidence_ledger,
+                "research_context": safe_context
+            }))
+            with open(os.path.join(sections_dir, f"{section}.tex"), "w") as f: f.write(section_content)
+        
+        print(f"LaTeX project generated in {draft_dir}")
+
     def run(self, field=None, resume=False):
         if not resume:
             short_topic = re.sub(r'[^a-zA-Z0-9]', '_', field)[:50]
@@ -113,6 +124,7 @@ class ResearchOrchestrator:
         while self.state["idx"] < len(self.state["steps"]):
             self.check_stop()
             step = self.state["steps"][self.state["idx"]]
+            if "retry_count" not in step: step["retry_count"] = 0
             print(f"Executing step {self.state['idx']}: {step['step']}")
             
             # PHASE 1: Implementation - Artifact by Artifact
@@ -137,10 +149,11 @@ class ResearchOrchestrator:
                     self.save_state()
                     break
             else:
-                # Only if PHASE 1 succeeded for all artifacts
                 # PHASE 2: Adversarial Verification (Step-wide)
                 logs = "All artifacts generated and verified."
                 reviews = self.adversary_board.review_claim(step['step'], logs, actual_artifacts, self.state["idx"])
+                
+                # Action Gating: Graph navigation
                 if any(r['action'] == "PIVOT" for r in reviews):
                     self.state["status"] = "BLOCKED_INVALID_METHOD"
                     self.save_state()
@@ -148,23 +161,6 @@ class ResearchOrchestrator:
                 
                 self.state["idx"] += 1
                 self.save_state()
-        
-        if self.state["idx"] >= len(self.state["steps"]):
-            self.state["status"] = "RESEARCH_COMPLETE"
-            self.save_state()
-            self.draft_paper()
-        
-        self._notify_completion()
-                    self.state["status"] = "BLOCKED_RETRY_LIMIT_EXCEEDED"
-                    self.save_state()
-                    break
-                # Possibly navigate to specific node if requested
-                requested_next = [r.get('next_step_index', self.state['idx']) for r in reviews if 'next_step_index' in r]
-                if requested_next:
-                    next_idx = requested_next[0]
-            
-            self.state["idx"] = next_idx
-            self.save_state()
         
         if self.state["idx"] >= len(self.state["steps"]):
             self.state["status"] = "RESEARCH_COMPLETE"
