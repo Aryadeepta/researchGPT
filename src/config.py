@@ -126,12 +126,13 @@ For each step, include:
 - 'skill': Skill filename
 - 'description': Detailed task
 - 'goal': Success objective
-- 'expected_artifacts': List of file paths this step MUST produce (e.g., ['report.json', 'data.csv']).
-- 'implementation_instruction': 'Explicitly write each of the expected_artifacts to the disk using Python (e.g., with open(file, "w") as f: f.write(content)).'
+- 'expected_artifacts': List of file paths this step MUST produce (e.g., ['novelty_gap_analysis.json', 'math_formulation.md']).
+- 'implementation_instruction': 'CRITICAL: Your Python code block MUST include file writing operations for EVERY file listed in expected_artifacts using: with open(filepath, "w") as f: f.write(content). Do not just print or log the content. If you fail to create the file, the pipeline will block.'
 
 Return ONLY the final JSON array of objects:
-[{{ "step": "...", "skill": "...", "description": "...", "goal": "...", "expected_artifacts": ["..."], "implementation_instruction": "..." }}, ...]
+[{"step": "...", "skill": "...", "description": "...", "goal": "...", "expected_artifacts": ["..."], "implementation_instruction": "..." }, ...]
 """
+
 
 
 TOPIC_SELECTION_PROMPT = """
