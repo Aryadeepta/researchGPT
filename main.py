@@ -95,12 +95,16 @@ class ResearchOrchestrator:
             os.makedirs(self.project_dir, exist_ok=True)
             self.state["project_dir"] = self.project_dir
             self.state["topic"] = field
-            workflow_json = self.planner.chat(PLANNING_AND_CRITIQUE_PROMPT.format(topic=field, skills_context=self.load_skills()))
+            
+            # Sanitize inputs for .format()
+            safe_field = field.replace("{", "{{").replace("}", "}}")
+            skills_context = self.load_skills()
+            safe_skills = skills_context.replace("{", "{{").replace("}", "}}")
+            
+            workflow_json = self.planner.chat(PLANNING_AND_CRITIQUE_PROMPT.format(topic=safe_field, skills_context=safe_skills))
             workflow_data = json.loads(re.sub(r'```json|```', '', workflow_json).strip())
-            if isinstance(workflow_data, dict) and "steps" in workflow_data:
-                self.state["steps"] = workflow_data["steps"]
-            else:
-                self.state["steps"] = workflow_data
+            self.state["steps"] = workflow_data.get("steps", workflow_data)
+            
             self.state["proposal"] = self.planner.chat(f"Create proposal for {field}")
             self.state["status"] = "IMPLEMENTING"
             self.save_state()
@@ -111,38 +115,28 @@ class ResearchOrchestrator:
             if "retry_count" not in step: step["retry_count"] = 0
             print(f"Executing step {self.state['idx']} (retry {step['retry_count']}): {step['step']}")
             
-            # Implementation
             skill_content = self.skills.get(step.get("skill"), "Perform task.")
-            code = self.coder.chat(f"{skill_content}\nTask: {step['description']}. Goal: {step['goal']}. Context: {self.state['context']}")
+            code = self.coder.chat(f"{skill_content}\nTask: {step['description']}. Goal: {step['goal']}. Context: {self.state['context']}\nInstruction: {step.get('implementation_instruction', '')}")
             
-            # Artifact execution
             python_block = re.search(r'```(?:python)?(.*?)```', code, re.DOTALL | re.IGNORECASE)
             result = {"stdout": "", "stderr": "", "artifacts": []}
             if python_block:
                 code_content = python_block.group(1).strip()
-                # Persist the artifact
                 code_filename = f"step_{self.state['idx']}_{re.sub(r'[^a-zA-Z0-9]', '_', step['step']).lower()}.py"
-                file_path = os.path.join(self.project_dir, code_filename)
-                with open(file_path, "w") as f: f.write(code_content)
+                with open(os.path.join(self.project_dir, code_filename), "w") as f: f.write(code_content)
                 result = CodeExecutor.execute_python(code_content, self.project_dir)
             
             # Artifact Contract Validation
             expected = step.get("expected_artifacts", [])
             actual = result["artifacts"]
             missing = [a for a in expected if a not in actual]
-            if missing:
-                print(f"CRITICAL: Missing artifacts: {missing}")
-                result["stderr"] += f"\nCRITICAL: Missing artifacts: {missing}"
-            
             logs = f"Stdout: {result['stdout']}\nStderr: {result['stderr']}"
+            if missing: logs += f"\nCRITICAL: Missing artifacts: {missing}"
+            
             self.state["context"] += f"\nStep {step['step']} logs: {logs}"
             
-            # Adversarial Check
-            reviews = self.adversary_board.review_claim(step['step'], logs, result['artifacts'])
-            
-            # Action Gating
-            actions = [r['action'] for r in reviews]
-            if "RETRY" in actions or missing:
+            reviews = self.adversary_board.review_claim(step['step'], logs, actual)
+            if any(r['action'] == "RETRY" for r in reviews) or missing:
                 step["retry_count"] += 1
                 if step["retry_count"] >= 3:
                     self.state["status"] = "BLOCKED_RETRY_LIMIT_EXCEEDED"
@@ -150,7 +144,7 @@ class ResearchOrchestrator:
                     break
                 self.save_state()
                 continue
-            elif "PIVOT" in actions:
+            elif any(r['action'] == "PIVOT" for r in reviews):
                 self.state["status"] = "BLOCKED_INVALID_METHOD"
                 self.save_state()
                 sys.exit(1)
@@ -164,7 +158,6 @@ class ResearchOrchestrator:
             self.draft_paper()
         
         self._notify_completion()
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--field", nargs='+')
