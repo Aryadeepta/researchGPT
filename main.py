@@ -122,6 +122,16 @@ class ResearchOrchestrator:
                 print(f"Artifact saved: {file_path}")
                 
                 result = CodeExecutor.execute_python(code_content, self.project_dir)
+                
+                # Auto-healing for missing dependencies
+                if "ModuleNotFoundError" in result['stderr']:
+                    match = re.search(r"ModuleNotFoundError: No module named '([^']+)'", result['stderr'])
+                    if match:
+                        missing_module = match.group(1)
+                        print(f"DEBUG: Missing dependency detected: {missing_module}. Installing...", flush=True)
+                        CodeExecutor.execute_shell(f"pip install --user {missing_module}", self.project_dir)
+                        # Retry execution
+                        result = CodeExecutor.execute_python(code_content, self.project_dir)
             
             logs = f"Stdout: {result['stdout']}\nStderr: {result['stderr']}"
             self.state["context"] += f"\nStep {step['step']} logs: {logs}"
