@@ -1,8 +1,8 @@
 
 # Configuration and Prompts
 
-FAST_QUEUE = ["gemini-1.5-flash", "gemini-2.0-flash-lite-preview"]
-SMART_QUEUE = ["gemini-2.0-flash", "gemini-3.1-flash-lite", "gemini-3.5-flash"]
+FAST_QUEUE = ["models/gemini-3.1-flash-lite", "models/gemini-3.5-flash"]
+SMART_QUEUE = ["models/gemini-3.1-flash-lite", "models/gemini-3.5-flash", "models/gemini-2.0-flash"]
 
 KEYWORD_EXTRACTION_PROMPT = """
 From the following text, extract the top 20 buzzwords related to the field:
