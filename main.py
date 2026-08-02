@@ -127,27 +127,27 @@ class ResearchOrchestrator:
             print(f"Selected topic: {field}")
 
         # 1. Initialization/Planning
-            print("\n--- Stage: Planning ---")
-            print("Planner: Designing workflow (with iterative novelty/feasibility assessment)...")
-            skills_context = self.load_skills()
-            workflow_json = self.planner.chat(PLANNING_AND_CRITIQUE_PROMPT.format(topic=field, skills_context=skills_context))
-            cleaned_json = re.sub(r'```json|```', '', workflow_json).strip()
-            self.state["steps"] = json.loads(cleaned_json)
-            
-            print("\n--- Research Workflow Plan ---")
-            for i, step in enumerate(self.state["steps"]):
-                print(f"{i+1}. {step['step']} (Skill: {step.get('skill')})")
-            print("------------------------------\n")
-            
-            self.state["topic"] = field
-            # TRUNCATE TOPIC FOR PATH
-            short_topic = re.sub(r'[^a-zA-Z0-9]', '_', field)[:50]
-            self.project_dir = os.path.join("results", f"multi_agent_{short_topic}_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
-            os.makedirs(self.project_dir, exist_ok=True)
-            
-            print("\n--- Stage: Proposal Generation ---")
-            self.state["proposal"] = self.planner.chat(f"Create proposal for {field}")
-            self.save_state()
+        print("\n--- Stage: Planning ---")
+        print("Planner: Designing workflow (with iterative novelty/feasibility assessment)...")
+        skills_context = self.load_skills()
+        workflow_json = self.planner.chat(PLANNING_AND_CRITIQUE_PROMPT.format(topic=field, skills_context=skills_context))
+        cleaned_json = re.sub(r'```json|```', '', workflow_json).strip()
+        self.state["steps"] = json.loads(cleaned_json)
+        
+        print("\n--- Research Workflow Plan ---")
+        for i, step in enumerate(self.state["steps"]):
+            print(f"{i+1}. {step['step']} (Skill: {step.get('skill')})")
+        print("------------------------------\n")
+        
+        self.state["topic"] = field
+        # TRUNCATE TOPIC FOR PATH
+        short_topic = re.sub(r'[^a-zA-Z0-9]', '_', field)[:50]
+        self.project_dir = os.path.join("results", f"multi_agent_{short_topic}_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+        os.makedirs(self.project_dir, exist_ok=True)
+        
+        print("\n--- Stage: Proposal Generation ---")
+        self.state["proposal"] = self.planner.chat(f"Create proposal for {field}")
+        self.save_state()
 
         # 2. Execution Phase
         print("\n--- Stage: Execution ---", flush=True)
