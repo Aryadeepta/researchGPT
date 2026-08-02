@@ -36,7 +36,9 @@ class ResearchOrchestrator:
         self.stop_requested = True
 
     def check_stop(self):
-        if self.stop_requested or (self.project_dir and os.path.exists(os.path.join(self.project_dir, ".stop_marker"))):
+        should_stop = self.stop_requested or (self.project_dir and os.path.exists(os.path.join(self.project_dir, ".stop_marker")))
+        if should_stop:
+            print(f"DEBUG: check_stop triggered. Stop requested: {self.stop_requested}, Stop marker exists: {self.project_dir and os.path.exists(os.path.join(self.project_dir, '.stop_marker'))}", flush=True)
             print("Cooperative stop requested. Checkpointing...")
             self.save_state()
             print("State saved successfully. Exiting gracefully.")
@@ -172,7 +174,7 @@ class ResearchOrchestrator:
         short_topic = re.sub(r'[^a-zA-Z0-9]', '_', field)[:50]
         new_project_dir = os.path.join("results", f"multi_agent_{short_topic}_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
         os.makedirs(new_project_dir, exist_ok=True)
-# self.project_dir = new_project_dir
+        self.project_dir = new_project_dir
         self.state["project_dir"] = self.project_dir # Save it in state too
 
         print(f"DEBUG: Project directory set to {self.project_dir}", flush=True)
