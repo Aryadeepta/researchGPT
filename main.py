@@ -144,6 +144,14 @@ class ResearchOrchestrator:
             os.makedirs(self.project_dir, exist_ok=True)
             self.state["project_dir"] = self.project_dir
             print(f"DEBUG: Project directory set to {self.project_dir}", flush=True)
+        
+        # Ensure project_dir is set for the rest of run()
+        if not self.project_dir:
+            print("CRITICAL: project_dir still None after initialization!", flush=True)
+            self.project_dir = self.state.get("project_dir")
+            if not self.project_dir:
+                 self.project_dir = "results/default_run"
+                 os.makedirs(self.project_dir, exist_ok=True)
 
         print("\n--- Stage: Planning ---")
         print("Planner: Designing workflow (with iterative novelty/feasibility assessment)...")
