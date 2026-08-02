@@ -133,13 +133,18 @@ class ResearchOrchestrator:
             
             # HARD GATE: If any reviewer rejects, block advancement
             if any("REJECT" in r.upper() for r in critique):
-                print(f"CRITICAL: Step '{step['step']}' failed adversarial review. Blocking.", flush=True)
+                print(f"CRITICAL: Step '{step['step']}' failed adversarial review. Blocking further progress.", flush=True)
                 self.state["status"] = "BLOCKED_ADVERSARIAL_FAILURE"
                 self.save_state()
-                sys.exit(1)
+                # Stop the research run but allow the process to finish/cleanup
+                break 
             
             self.state["idx"] += 1
             self.save_state()
+            
+            # Throttle to respect rate limits
+            import time
+            time.sleep(10)
         
         self.draft_paper()
         self._notify_completion()
