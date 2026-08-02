@@ -128,7 +128,7 @@ start_run() {
         "-e" "GITHUB_TOKEN=${GITHUB_TOKEN:-}"
 
         "paper-gen-image"
-        "bash" "-c" "env | grep GOOGLE; pip install --user google-genai tenacity && export PATH=/tmp/.local/bin:\$PATH && python main.py --field \"\$1\"" "_" "$topic"
+        "bash" "-c" "env | grep GOOGLE; pip install --user google-genai tenacity && export PATH=/tmp/.local/bin:\$PATH && python3 main.py --field \"\$1\"" "_" "$topic"
     )
 
     echo "DEBUG: Final docker command: docker run ${docker_args[*]}"
