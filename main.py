@@ -6,12 +6,16 @@ import sys
 import shutil
 import traceback
 import signal
+from string import Template
 from datetime import datetime
 from src.agent import ResearchAgent, CodeExecutor
 from src.ledger import EvidenceLedger
 from src.adversarial import AdversarialBoard
 from src.config import *
 from src.rag import ProjectRAG, summarize_project
+
+def prompt_from_template(template_str, mapping):
+    return Template(template_str).safe_substitute(mapping)
 
 class ResearchOrchestrator:
     def __init__(self, project_dir=None):
@@ -51,9 +55,11 @@ class ResearchOrchestrator:
             json.dump(self.state, f)
 
     def load_state(self, project_dir):
+        # Explicitly reset state before loading
+        self.state = {"steps": [], "idx": 0, "context": "", "topic": "", "proposal": ""}
         state_path = os.path.join(project_dir, "state.json")
         with open(state_path, "r") as f:
-            self.state = json.load(f)
+            self.state.update(json.load(f))
         self.project_dir = project_dir
         self.load_skills()
 
@@ -74,16 +80,22 @@ class ResearchOrchestrator:
         
         evidence_ledger = json.dumps(ledger.data)
         
-        style_guide_json = self.coder.chat(STYLE_GUIDE_PROMPT.format(topic=self.state['topic']))
+        style_guide_json = self.coder.chat(prompt_from_template(STYLE_GUIDE_PROMPT, {"topic": self.state['topic']}))
         style_data = json.loads(re.sub(r'```json|```', '', style_guide_json).strip())
         
-        main_tex = self.coder.chat(MAIN_TEX_PROMPT.format(topic=self.state['topic'], sections=style_data['sections'], latex_class=style_data['latex_class']))
+        main_tex = self.coder.chat(prompt_from_template(MAIN_TEX_PROMPT, {"topic": self.state['topic'], "sections": str(style_data['sections']), "latex_class": style_data['latex_class']}))
         with open(os.path.join(draft_dir, "main.tex"), "w") as f: f.write(main_tex)
             
         safe_context = self.state['context'].replace("{", "{{").replace("}", "}}")
         for section in style_data['sections']:
             section_title = section.replace("_", " ").title()
-            section_content = self.coder.chat(SECTION_DRAFTING_PROMPT.format(section_name=section, section_name_title=section_title, topic=self.state['topic'], evidence_ledger=evidence_ledger, research_context=safe_context))
+            section_content = self.coder.chat(prompt_from_template(SECTION_DRAFTING_PROMPT, {
+                "section_name": section,
+                "section_name_title": section_title,
+                "topic": self.state['topic'],
+                "evidence_ledger": evidence_ledger,
+                "research_context": safe_context
+            }))
             with open(os.path.join(sections_dir, f"{section}.tex"), "w") as f: f.write(section_content)
         
         print(f"LaTeX project generated in {draft_dir}")
@@ -96,16 +108,11 @@ class ResearchOrchestrator:
             self.state["project_dir"] = self.project_dir
             self.state["topic"] = field
             
-            # Sanitize inputs for .format()
-            safe_field = field.replace("{", "{{").replace("}", "}}")
-            skills_context = self.load_skills()
-            safe_skills = skills_context.replace("{", "{{").replace("}", "}}")
-            
-            workflow_json = self.planner.chat(PLANNING_AND_CRITIQUE_PROMPT.format(topic=safe_field, skills_context=safe_skills))
+            workflow_json = self.planner.chat(prompt_from_template(PLANNING_AND_CRITIQUE_PROMPT, {"topic": field, "skills_context": self.load_skills()}))
             workflow_data = json.loads(re.sub(r'```json|```', '', workflow_json).strip())
             self.state["steps"] = workflow_data.get("steps", workflow_data)
             
-            self.state["proposal"] = self.planner.chat(f"Create proposal for {field}")
+            self.state["proposal"] = self.planner.chat(prompt_from_template(PROPOSAL_GENERATION_PROMPT, {"topic": field}))
             self.state["status"] = "IMPLEMENTING"
             self.save_state()
 
@@ -126,7 +133,6 @@ class ResearchOrchestrator:
                 with open(os.path.join(self.project_dir, code_filename), "w") as f: f.write(code_content)
                 result = CodeExecutor.execute_python(code_content, self.project_dir)
             
-            # Artifact Contract Validation
             expected = step.get("expected_artifacts", [])
             actual = result["artifacts"]
             missing = [a for a in expected if a not in actual]
@@ -158,6 +164,7 @@ class ResearchOrchestrator:
             self.draft_paper()
         
         self._notify_completion()
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--field", nargs='+')
