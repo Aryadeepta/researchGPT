@@ -155,8 +155,11 @@ class ResearchOrchestrator:
             # Throttle to respect rate limits
             import time
             time.sleep(10)
-        
-        self.draft_paper()
+        # Finalization
+        if self.state.get("status") != "BLOCKED_ADVERSARIAL_FAILURE":
+            self.draft_paper()
+        else:
+            print("Research blocked due to adversarial failure. Skipping paper drafting.")
         self._notify_completion()
 
 def main():
