@@ -26,7 +26,7 @@ class ResearchOrchestrator:
         self.stop_requested = False
         signal.signal(signal.SIGINT, self._handle_stop_signal)
         signal.signal(signal.SIGTERM, self._handle_stop_signal)
-        
+
     def _handle_stop_signal(self, signum, frame):
         print(f"Stop signal received ({signum}).")
         self.stop_requested = True
