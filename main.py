@@ -55,7 +55,6 @@ class ResearchOrchestrator:
             json.dump(self.state, f)
 
     def load_state(self, project_dir):
-        # Explicitly reset state before loading
         self.state = {"steps": [], "idx": 0, "context": "", "topic": "", "proposal": ""}
         state_path = os.path.join(project_dir, "state.json")
         with open(state_path, "r") as f:
@@ -110,7 +109,13 @@ class ResearchOrchestrator:
             
             workflow_json = self.planner.chat(prompt_from_template(PLANNING_AND_CRITIQUE_PROMPT, {"topic": field, "skills_context": self.load_skills()}))
             workflow_data = json.loads(re.sub(r'```json|```', '', workflow_json).strip())
-            self.state["steps"] = workflow_data.get("steps", workflow_data)
+            
+            if isinstance(workflow_data, dict):
+                self.state["steps"] = workflow_data.get("steps", workflow_data)
+            elif isinstance(workflow_data, list):
+                self.state["steps"] = workflow_data
+            else:
+                self.state["steps"] = []
             
             self.state["proposal"] = self.planner.chat(prompt_from_template(PROPOSAL_GENERATION_PROMPT, {"topic": field}))
             self.state["status"] = "IMPLEMENTING"
