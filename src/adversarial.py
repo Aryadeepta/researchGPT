@@ -8,7 +8,7 @@ class AdversarialBoard:
         self.architecture_reviewer = ResearchAgent("You are a hardware architecture reviewer. Focus on RTL efficiency, area/power/timing metrics, and synthesis reports.", model_queue=SMART_QUEUE)
         self.methodology_reviewer = ResearchAgent("You are an experimental methodology reviewer. Focus on benchmark fairness, statistical significance, and artifact provenance.", model_queue=SMART_QUEUE)
         self.reproducibility_reviewer = ResearchAgent("You are a reproducibility reviewer. Can this research be replicated from the artifacts provided?", model_queue=SMART_QUEUE)
-def review_claim(self, step_name, logs, artifacts):
+    def review_claim(self, step_name, logs, artifacts):
     # Independent reviewers
     reviewers = [self.security_reviewer, self.architecture_reviewer, self.methodology_reviewer, self.reproducibility_reviewer]
     reviews = []
