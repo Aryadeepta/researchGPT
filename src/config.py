@@ -127,7 +127,11 @@ For each step, include:
 - 'description': Detailed task
 - 'goal': Success objective
 - 'expected_artifacts': List of file paths this step MUST produce (e.g., ['novelty_gap_analysis.json', 'math_formulation.md']).
-- 'implementation_instruction': 'CRITICAL: Your Python code block MUST include file writing operations for EVERY file listed in expected_artifacts using: with open(filepath, "w") as f: f.write(content). Do not just print or log the content. If you fail to create the file, the pipeline will block.'
+- 'implementation_instruction': 'CRITICAL: You MUST implement Python code that creates ALL files listed in expected_artifacts. For every artifact, use the following pattern: 
+    data = {...} 
+    with open("path/to/artifact", "w") as f:
+        json.dump(data, f, indent=2)
+    Do not print the content to stdout. Write the file to disk.'
 
 Return ONLY the final JSON array of objects:
 [{{ "step": "...", "skill": "...", "description": "...", "goal": "...", "expected_artifacts": ["..."], "implementation_instruction": "..." }}, ...]
