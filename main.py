@@ -291,7 +291,11 @@ class ResearchOrchestrator:
         # 3. Finalization & QA
         # After execution loop finishes:
         print("\n--- Research Complete ---", flush=True)
-        self.draft_paper()
+        print(f"DEBUG: Project dir before draft_paper: {self.project_dir}", flush=True)
+        if self.project_dir:
+            self.draft_paper()
+        else:
+            print("CRITICAL ERROR: project_dir is None, cannot draft paper.", flush=True)
         self._notify_completion()
         
         # QA Loop
