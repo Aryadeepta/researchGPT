@@ -130,7 +130,7 @@ For each step, include:
 - 'implementation_instruction': 'Explicitly write each of the expected_artifacts to the disk using Python (e.g., with open(file, "w") as f: f.write(content)).'
 
 Return ONLY the final JSON array of objects:
-[{"step": "...", "skill": "...", "description": "...", "goal": "...", "expected_artifacts": ["..."], "implementation_instruction": "..." }, ...]
+[{{ "step": "...", "skill": "...", "description": "...", "goal": "...", "expected_artifacts": ["..."], "implementation_instruction": "..." }}, ...]
 """
 
 
