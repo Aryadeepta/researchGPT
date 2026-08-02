@@ -156,12 +156,14 @@ class ResearchOrchestrator:
         short_topic = re.sub(r'[^a-zA-Z0-9]', '_', field)[:50]
         self.project_dir = os.path.join("results", f"multi_agent_{short_topic}_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
         os.makedirs(self.project_dir, exist_ok=True)
-        self.state["project_dir"] = self.project_dir # Save it in state too
+        self.state["project_dir"] = self.project_dir # Ensure it's in the state
+
+        print(f"DEBUG: Project directory set to {self.project_dir}", flush=True)
 
         print("\n--- Stage: Proposal Generation ---")
-
         self.state["proposal"] = self.planner.chat(f"Create proposal for {field}")
         self.save_state()
+
 
         # 2. Execution Phase
         print("\n--- Stage: Execution ---", flush=True)
