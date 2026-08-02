@@ -2,13 +2,13 @@ from src.agent import ResearchAgent
 from src.config import SMART_QUEUE
 import json
 import re
-
 class AdversarialBoard:
-    def __init__(self):
-        self.security_reviewer = ResearchAgent("You are a cryptography/security reviewer. Focus on side-channel leakage, cryptographic hardness, and threat models.", model_queue=SMART_QUEUE)
-        self.architecture_reviewer = ResearchAgent("You are a hardware architecture reviewer. Focus on RTL efficiency, area/power/timing metrics, and synthesis reports.", model_queue=SMART_QUEUE)
-        self.methodology_reviewer = ResearchAgent("You are an experimental methodology reviewer. Focus on benchmark fairness, statistical significance, and artifact provenance.", model_queue=SMART_QUEUE)
-        self.reproducibility_reviewer = ResearchAgent("You are a reproducibility reviewer. Can this research be replicated from the artifacts provided?", model_queue=SMART_QUEUE)
+    def __init__(self, topic="general research"):
+        self.security_reviewer = ResearchAgent(f"You are a critical reviewer for {topic}. Focus on security, safety, and robustness.", model_queue=SMART_QUEUE)
+        self.architecture_reviewer = ResearchAgent(f"You are an architectural reviewer for {topic}. Focus on efficiency, feasibility, and system design.", model_queue=SMART_QUEUE)
+        self.methodology_reviewer = ResearchAgent(f"You are an experimental methodology reviewer for {topic}. Focus on benchmark fairness, statistical significance, and artifact provenance.", model_queue=SMART_QUEUE)
+        self.reproducibility_reviewer = ResearchAgent(f"You are a reproducibility reviewer for {topic}. Can this research be replicated from the artifacts provided?", model_queue=SMART_QUEUE)
+
 
     def review_claim(self, step_name, logs, artifacts, step_idx):
         reviewers = [self.security_reviewer, self.architecture_reviewer, self.methodology_reviewer, self.reproducibility_reviewer]
