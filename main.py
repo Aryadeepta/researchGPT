@@ -61,10 +61,10 @@ class ResearchOrchestrator:
         print(f"Research run '{self.state.get('topic')}' complete.")
 
     def draft_paper(self):
-        from src.ledger import EvidenceLedger
+        print("Orchestrator: Implementing structured LaTeX drafting...")
         ledger = EvidenceLedger(self.project_dir)
         if not ledger.is_paper_ready():
-            print("CRITICAL: Research not ready for paper drafting.")
+            print("CRITICAL: Research not ready for paper drafting. Unverified claims exist.")
             return
         
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -101,7 +101,25 @@ class ResearchOrchestrator:
             self.save_state()
 
         while self.state["idx"] < len(self.state["steps"]):
-            # ... execution ...
+            self.check_stop()
+            step = self.state["steps"][self.state["idx"]]
+            print(f"Executing step {self.state['idx']}: {step['step']}")
+            
+            # Implementation
+            skill_content = self.skills.get(step.get("skill"), "Perform task.")
+            code = self.coder.chat(f"{skill_content}\nTask: {step['description']}. Goal: {step['goal']}. Context: {self.state['context']}")
+            
+            # Artifact execution
+            python_block = re.search(r'```(?:python)?(.*?)```', code, re.DOTALL | re.IGNORECASE)
+            logs = ""
+            if python_block:
+                logs = CodeExecutor.execute_python(python_block.group(1).strip(), self.project_dir)
+            self.state["context"] += f"\nStep {step['step']} logs: {logs}"
+            
+            # Adversarial Check
+            critique = self.adversary_board.review_claim(step['step'], logs)
+            self.state["context"] += f"\nCritique: {critique}"
+            
             self.state["idx"] += 1
             self.save_state()
         
@@ -120,3 +138,8 @@ def main():
         orch.run(resume=True)
     elif args.field:
         orch.run(field=" ".join(args.field), resume=False)
+    else:
+        print("Error: Provide --field or --resume")
+
+if __name__ == "__main__":
+    main()
