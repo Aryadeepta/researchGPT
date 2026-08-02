@@ -138,7 +138,7 @@ class ResearchOrchestrator:
                     os.makedirs(os.path.dirname(full_path), exist_ok=True)
                     with open(full_path, "w") as f: f.write(content)
                     
-                    reviews = self.adversary_board.review_claim(f"{step['step']} - {artifact_path}", "Artifact generated.", [artifact_path], self.state["idx"])
+                    reviews = self.adversary_board.review_claim(f"{step['step']} - {artifact_path}", "Artifact generated.", [artifact_path], self.state["idx"], self.project_dir)
                     if all(r['action'] == "ADVANCE" for r in reviews):
                         actual_artifacts.append(artifact_path)
                         break
@@ -151,7 +151,7 @@ class ResearchOrchestrator:
             else:
                 # PHASE 2: Adversarial Verification (Step-wide)
                 logs = "All artifacts generated and verified."
-                reviews = self.adversary_board.review_claim(step['step'], logs, actual_artifacts, self.state["idx"])
+                reviews = self.adversary_board.review_claim(step['step'], logs, actual_artifacts, self.state["idx"], self.project_dir)
                 
                 # Action Gating: Graph navigation
                 if any(r['action'] == "PIVOT" for r in reviews):
