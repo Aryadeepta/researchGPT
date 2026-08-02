@@ -113,7 +113,15 @@ class ResearchOrchestrator:
             python_block = re.search(r'```(?:python)?(.*?)```', code, re.DOTALL | re.IGNORECASE)
             logs = ""
             if python_block:
-                logs = CodeExecutor.execute_python(python_block.group(1).strip(), self.project_dir)
+                code_content = python_block.group(1).strip()
+                # Persist the artifact
+                code_filename = f"step_{self.state['idx']}_{re.sub(r'[^a-zA-Z0-9]', '_', step['step']).lower()}.py"
+                file_path = os.path.join(self.project_dir, code_filename)
+                with open(file_path, "w") as f:
+                    f.write(code_content)
+                print(f"Artifact saved: {file_path}")
+                
+                logs = CodeExecutor.execute_python(code_content, self.project_dir)
             self.state["context"] += f"\nStep {step['step']} logs: {logs}"
             
             # Adversarial Check
