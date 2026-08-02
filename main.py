@@ -24,8 +24,10 @@ class ResearchOrchestrator:
         self.skills = {}
         self.stop_requested = False
         print("DEBUG: ResearchOrchestrator.__init__ finished")
-from src.adversarial import AdversarialBoard
-from src.config import *
+
+        signal.signal(signal.SIGINT, self._handle_stop_signal)
+        signal.signal(signal.SIGTERM, self._handle_stop_signal)
+
 # ... (rest of imports)
 
             print("DEBUG: ResearchOrchestrator.__init__ started")
