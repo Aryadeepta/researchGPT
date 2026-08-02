@@ -17,6 +17,7 @@ class ResearchOrchestrator:
     def __init__(self, project_dir=None):
         print("DEBUG: ResearchOrchestrator.__init__ started")
         self.project_dir = project_dir
+        self.state["project_dir"] = project_dir
         self.state = {"steps": [], "idx": 0, "context": "", "topic": "", "proposal": ""}
         print("DEBUG: Initializing agents")
         self.planner = ResearchAgent("You are a research planner. Output JSON workflows.", model_queue=SMART_QUEUE)
@@ -73,6 +74,7 @@ class ResearchOrchestrator:
             self.state = json.load(f)
         
         self.project_dir = project_dir
+        self.state["project_dir"] = project_dir
         self.load_skills()
         print(f"DEBUG: State loaded, project_dir set to {self.project_dir}", flush=True)
 
