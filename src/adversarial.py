@@ -2,7 +2,10 @@ from src.agent import ResearchAgent
 from src.config import SMART_QUEUE
 import json
 import re
+import os
+
 class AdversarialBoard:
+
     def __init__(self, topic="general research"):
         self.security_reviewer = ResearchAgent(f"You are a critical reviewer for {topic}. Focus on security, safety, and robustness.", model_queue=SMART_QUEUE)
         self.architecture_reviewer = ResearchAgent(f"You are an architectural reviewer for {topic}. Focus on efficiency, feasibility, and system design.", model_queue=SMART_QUEUE)
