@@ -157,37 +157,35 @@ class ResearchOrchestrator:
             self.state["context"] += f"\nStep {step['step']} logs: {logs}"
             
             # Adversarial Check
-            reviews = self.adversary_board.review_claim(step['step'], logs, actual)
+            reviews = self.adversary_board.review_claim(step['step'], logs, actual, self.state["idx"])
             
-            # Action Gating
-            actions = [r['action'] for r in reviews]
-            if "RETRY" in actions:
-                current_retry_reasons = [r['reason'] for r in reviews if r['action'] == 'RETRY']
-                
-                # Check for consecutive identical errors
-                if step.get("last_retry_reasons") == current_retry_reasons:
-                    step["consecutive_retry_count"] = step.get("consecutive_retry_count", 0) + 1
-                else:
-                    step["consecutive_retry_count"] = 1
-                step["last_retry_reasons"] = current_retry_reasons
-                
-                step["retry_count"] += 1
-                
-                if step["consecutive_retry_count"] >= 3:
-                    print(f"CRITICAL: Step '{step['step']}' failed persistently (Reason: {current_retry_reasons}). Pausing.", flush=True)
-                    self.state["status"] = "BLOCKED_RETRY_LIMIT_EXCEEDED"
-                    self.save_state()
-                    break
-                
-                print(f"CRITICAL: Step '{step['step']}' requires RETRY ({step['retry_count']}). Reason: {current_retry_reasons}", flush=True)
-                self.save_state()
-                continue
-            elif any(r['action'] == "PIVOT" for r in reviews):
+            # Action Gating: Graph navigation
+            # Default: Retry
+            next_idx = self.state["idx"]
+            
+            # If any reviewer dictates PIVOT, stop
+            if any(r['action'] == "PIVOT" for r in reviews):
                 self.state["status"] = "BLOCKED_INVALID_METHOD"
                 self.save_state()
                 sys.exit(1)
+                
+            # If all reviewers agree to ADVANCE, move forward
+            if all(r['action'] == "ADVANCE" for r in reviews):
+                step["retry_count"] = 0
+                next_idx = self.state["idx"] + 1
+            else:
+                # RETRY or Mixed - stay on current step (retry)
+                step["retry_count"] += 1
+                if step["retry_count"] >= 3:
+                    self.state["status"] = "BLOCKED_RETRY_LIMIT_EXCEEDED"
+                    self.save_state()
+                    break
+                # Possibly navigate to specific node if requested
+                requested_next = [r.get('next_step_index', self.state['idx']) for r in reviews if 'next_step_index' in r]
+                if requested_next:
+                    next_idx = requested_next[0]
             
-            self.state["idx"] += 1
+            self.state["idx"] = next_idx
             self.save_state()
         
         if self.state["idx"] >= len(self.state["steps"]):
