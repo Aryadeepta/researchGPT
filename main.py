@@ -135,8 +135,16 @@ class ResearchOrchestrator:
             
             print(f"Selected topic: {field}")
 
-        # 1. Initialization/Planning
-        print("DEBUG: Reached Initialization/Planning stage", flush=True)
+            # 1. Initialization/Planning
+            print("DEBUG: Reached Initialization/Planning stage", flush=True)
+            
+            # TRUNCATE TOPIC FOR PATH
+            short_topic = re.sub(r'[^a-zA-Z0-9]', '_', field)[:50]
+            self.project_dir = os.path.join("results", f"multi_agent_{short_topic}_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+            os.makedirs(self.project_dir, exist_ok=True)
+            self.state["project_dir"] = self.project_dir
+            print(f"DEBUG: Project directory set to {self.project_dir}", flush=True)
+
         print("\n--- Stage: Planning ---")
         print("Planner: Designing workflow (with iterative novelty/feasibility assessment)...")
         skills_context = self.load_skills()
