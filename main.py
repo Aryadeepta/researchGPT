@@ -24,7 +24,7 @@ class ResearchOrchestrator:
         if self.project_dir:
             self.state["project_dir"] = self.project_dir
         self.planner = ResearchAgent("You are a research planner. Output JSON workflows.", model_queue=SMART_QUEUE)
-        self.coder = ResearchAgent("You are a Python coder. Output runnable code only.", model_queue=FAST_QUEUE)
+        self.coder = ResearchAgent("You are a Python coder. Output runnable code only. For every expected artifact, you MUST implement Python code to write it to disk using 'with open(filename, \"w\") as f: f.write(content)'. Do not omit this.", model_queue=FAST_QUEUE)
         self.adversary_board = AdversarialBoard()
         self.skills = {}
         self.stop_requested = False
