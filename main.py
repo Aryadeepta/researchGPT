@@ -58,12 +58,21 @@ class ResearchOrchestrator:
             json.dump(self.state, f)
 
     def load_state(self, project_dir):
-        if not os.path.exists(project_dir):
-            raise FileNotFoundError(f"Project dir not found: {project_dir}")
-        with open(os.path.join(project_dir, "state.json"), "r") as f:
+        print(f"DEBUG: Loading state from {project_dir}", flush=True)
+        # Handle cases where project_dir might be a results subdirectory vs the base path
+        state_path = os.path.join(project_dir, "state.json")
+        if not os.path.exists(state_path):
+            # Try looking inside the subdirectory if the path provided was the run dir
+            state_path = os.path.join(project_dir, "results", "state.json")
+            if not os.path.exists(state_path):
+                raise FileNotFoundError(f"State file not found in {project_dir}")
+        
+        with open(state_path, "r") as f:
             self.state = json.load(f)
-            self.project_dir = project_dir
+        
+        self.project_dir = project_dir
         self.load_skills()
+        print(f"DEBUG: State loaded, project_dir set to {self.project_dir}", flush=True)
 
     def _notify_completion(self):
         # Notify completion via GitHub CLI
