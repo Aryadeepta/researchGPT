@@ -121,9 +121,18 @@ Iterative Process:
 
 3. If you find the proposal is not novel or not feasible, refine the proposal and repeat the assessment until you achieve a high score, then output the final JSON.
 
+For each step, include:
+- 'step': Name
+- 'skill': Skill filename
+- 'description': Detailed task
+- 'goal': Success objective
+- 'expected_artifacts': List of file paths this step MUST produce (e.g., ['report.json', 'data.csv']).
+- 'implementation_instruction': 'Explicitly write each of the expected_artifacts to the disk using Python (e.g., with open(file, "w") as f: f.write(content)).'
+
 Return ONLY the final JSON array of objects:
-[{{ "step": "Step Name", "skill": "exact_filename.md", "description": "Specific task to perform", "goal": "What success looks like for this step" }}]
+[{"step": "...", "skill": "...", "description": "...", "goal": "...", "expected_artifacts": ["..."], "implementation_instruction": "..." }, ...]
 """
+
 
 TOPIC_SELECTION_PROMPT = """
 Given the general research field: {field}.
