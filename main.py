@@ -103,7 +103,8 @@ class ResearchOrchestrator:
         while self.state["idx"] < len(self.state["steps"]):
             self.check_stop()
             step = self.state["steps"][self.state["idx"]]
-            print(f"Executing step {self.state['idx']}: {step['step']}")
+            if "retry_count" not in step: step["retry_count"] = 0
+            print(f"Executing step {self.state['idx']} (retry {step['retry_count']}): {step['step']}")
             
             # Implementation
             skill_content = self.skills.get(step.get("skill"), "Perform task.")
@@ -144,8 +145,13 @@ class ResearchOrchestrator:
             # Action Gating: Process reviewer instructions
             actions = [r['action'] for r in reviews]
             if "RETRY" in actions:
-                print(f"CRITICAL: Step '{step['step']}' requires RETRY. Reason: {[r['reason'] for r in reviews if r['action'] == 'RETRY']}", flush=True)
-                # Keep idx same to retry
+                step["retry_count"] += 1
+                if step["retry_count"] >= 3:
+                    print(f"CRITICAL: Step '{step['step']}' reached max retries. Pausing.", flush=True)
+                    self.state["status"] = "BLOCKED_RETRY_LIMIT_EXCEEDED"
+                    self.save_state()
+                    break # Pause
+                print(f"CRITICAL: Step '{step['step']}' requires RETRY ({step['retry_count']}/3). Reason: {[r['reason'] for r in reviews if r['action'] == 'RETRY']}", flush=True)
                 self.save_state()
                 continue
             elif "PIVOT" in actions:
@@ -155,6 +161,7 @@ class ResearchOrchestrator:
                 sys.exit(1)
             
             # If all ADVANCE, proceed
+            step["retry_count"] = 0 # Reset
             self.state["idx"] += 1
             self.save_state()
             
