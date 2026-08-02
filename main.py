@@ -160,17 +160,18 @@ class ResearchOrchestrator:
         self.state["project_dir"] = self.project_dir # Save it in state too
 
         print(f"DEBUG: Project directory set to {self.project_dir}", flush=True)
+        print(f"DEBUG: self.project_dir value is {self.project_dir}", flush=True)
 
         print("\n--- Stage: Proposal Generation ---")
         self.state["proposal"] = self.planner.chat(f"Create proposal for {field}")
         self.save_state()
 
-
-
         # 2. Execution Phase
         print("\n--- Stage: Execution ---", flush=True)
         print(f"DEBUG: Starting execution loop, index {self.state['idx']} of {len(self.state['steps'])}", flush=True)
+        print(f"DEBUG: Project dir before loop: {self.project_dir}", flush=True)
         while self.state["idx"] < len(self.state["steps"]):
+
             self.check_stop()
             step = self.state["steps"][self.state["idx"]]
             goal = step.get("goal", "Complete the task.")
