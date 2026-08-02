@@ -111,7 +111,7 @@ class ResearchOrchestrator:
             
             # Artifact execution
             python_block = re.search(r'```(?:python)?(.*?)```', code, re.DOTALL | re.IGNORECASE)
-            logs = ""
+            result = {"stdout": "", "stderr": "", "artifacts": []}
             if python_block:
                 code_content = python_block.group(1).strip()
                 # Persist the artifact
@@ -121,12 +121,22 @@ class ResearchOrchestrator:
                     f.write(code_content)
                 print(f"Artifact saved: {file_path}")
                 
-                logs = CodeExecutor.execute_python(code_content, self.project_dir)
+                result = CodeExecutor.execute_python(code_content, self.project_dir)
+            
+            logs = f"Stdout: {result['stdout']}\nStderr: {result['stderr']}"
             self.state["context"] += f"\nStep {step['step']} logs: {logs}"
             
-            # Adversarial Check
-            critique = self.adversary_board.review_claim(step['step'], logs)
+            # Adversarial Check with Artifact Gating
+            print(f"DEBUG: Running adversarial review for step {step['step']}", flush=True)
+            critique = self.adversary_board.review_claim(step['step'], logs, result['artifacts'])
             self.state["context"] += f"\nCritique: {critique}"
+            
+            # HARD GATE: If any reviewer rejects, block advancement
+            if any("REJECT" in r.upper() for r in critique):
+                print(f"CRITICAL: Step '{step['step']}' failed adversarial review. Blocking.", flush=True)
+                self.state["status"] = "BLOCKED_ADVERSARIAL_FAILURE"
+                self.save_state()
+                sys.exit(1)
             
             self.state["idx"] += 1
             self.save_state()
