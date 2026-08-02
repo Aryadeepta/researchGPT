@@ -146,8 +146,15 @@ class ResearchOrchestrator:
             os.makedirs(self.project_dir, exist_ok=True)
             self.state["project_dir"] = self.project_dir
             print(f"DEBUG: Project directory set to {self.project_dir}", flush=True)
-        
-        # Ensure project_dir is set for the rest of run()
+
+            print("DEBUG: Calling planner.chat for topic...", flush=True)
+            skills_context = self.load_skills()
+            workflow_json = self.planner.chat(PLANNING_AND_CRITIQUE_PROMPT.format(topic=field, skills_context=skills_context))
+            print(f"DEBUG: Planning response: {workflow_json[:200]}", flush=True)
+            
+            cleaned_json = re.sub(r'```json|```', '', workflow_json).strip()
+            self.state["steps"] = json.loads(cleaned_json)
+            print(f"DEBUG: Workflow steps loaded: {len(self.state['steps'])} steps", flush=True)
         if not self.project_dir:
             print("CRITICAL: project_dir still None after initialization!", flush=True)
             self.project_dir = self.state.get("project_dir")
