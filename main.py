@@ -138,17 +138,23 @@ class ResearchOrchestrator:
             
             # Adversarial Check with Artifact Gating
             print(f"DEBUG: Running adversarial review for step {step['step']}", flush=True)
-            critique = self.adversary_board.review_claim(step['step'], logs, result['artifacts'])
-            self.state["context"] += f"\nCritique: {critique}"
+            reviews = self.adversary_board.review_claim(step['step'], logs, result['artifacts'])
+            self.state["context"] += f"\nReviews: {reviews}"
             
-            # HARD GATE: If any reviewer rejects, block advancement
-            if any("REJECT" in r.upper() for r in critique):
-                print(f"CRITICAL: Step '{step['step']}' failed adversarial review. Blocking further progress.", flush=True)
-                self.state["status"] = "BLOCKED_ADVERSARIAL_FAILURE"
+            # Action Gating: Process reviewer instructions
+            actions = [r['action'] for r in reviews]
+            if "RETRY" in actions:
+                print(f"CRITICAL: Step '{step['step']}' requires RETRY. Reason: {[r['reason'] for r in reviews if r['action'] == 'RETRY']}", flush=True)
+                # Keep idx same to retry
                 self.save_state()
-                # Stop the research run but allow the process to finish/cleanup
-                break 
+                continue
+            elif "PIVOT" in actions:
+                print(f"CRITICAL: Step '{step['step']}' requires PIVOT. Reason: {[r['reason'] for r in reviews if r['action'] == 'PIVOT']}", flush=True)
+                self.state["status"] = "BLOCKED_INVALID_METHOD"
+                self.save_state()
+                sys.exit(1)
             
+            # If all ADVANCE, proceed
             self.state["idx"] += 1
             self.save_state()
             

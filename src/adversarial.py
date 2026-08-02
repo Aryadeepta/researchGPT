@@ -12,15 +12,21 @@ class AdversarialBoard:
     def review_claim(self, step_name, logs, artifacts):
         # Aggregation logic
         reviewers = [self.security_reviewer, self.architecture_reviewer, self.methodology_reviewer, self.reproducibility_reviewer]
-        reports = []
+        reviews = []
         for r in reviewers:
             review_prompt = (f"Review the results for step '{step_name}'.\n"
                              f"Raw Logs:\n{logs}\n"
                              f"Artifacts generated:\n{', '.join(artifacts)}\n"
-                             f"REQUIRED: Validate that the generated artifacts support the claims made in the logs. If no artifacts were generated for a claim, reject the step.")
-            
-            print(f"DEBUG: Sending prompt to {r.system_instruction[:30]}...", flush=True)
+                             f"REQUIRED: Evaluate the validity of the step. Return ONLY JSON:\n"
+                             f"{{\n  \"action\": \"RETRY\" | \"PIVOT\" | \"ADVANCE\",\n  \"reason\": \"...\"\n}}")
+
             report = r.chat(review_prompt)
-            print(f"DEBUG: Reviewer ({r.system_instruction[:30]}) report: {report}", flush=True)
-            reports.append(report)
-        return reports
+            # Parse JSON
+            try:
+                review = json.loads(re.sub(r'```json|```', '', report).strip())
+                reviews.append(review)
+            except:
+                reviews.append({"action": "RETRY", "reason": "Failed to parse reviewer output"})
+
+        return reviews
+
