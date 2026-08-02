@@ -127,8 +127,10 @@ start_run() {
         "-e" "GOOGLE_API_KEY=${GEMINI_API_KEY:-${GOOGLE_API_KEY:-}}"
         "-e" "GITHUB_TOKEN=${GITHUB_TOKEN:-}"
 
+        "--entrypoint" "bash"
         "paper-gen-image"
-        "bash" "-c" "env | grep GOOGLE; pip install --user google-genai tenacity && export PATH=/tmp/.local/bin:\$PATH && python3 main.py --field \"\$1\"" "_" "$topic"
+        "-c" "env | grep GOOGLE; pip install --user google-genai tenacity && export PATH=/tmp/.local/bin:\$PATH && python3 main.py --field \"\$1\"" "_" "$topic"
+
     )
 
     echo "DEBUG: Final docker command: docker run ${docker_args[*]}"
