@@ -59,7 +59,27 @@ class ResearchAgent:
 class CodeExecutor:
     @staticmethod
     def execute_python(code_str, project_dir):
-        # Create temp file inside the project directory
+        # 1. Identify and extract shell commands (e.g., #!pip install ... or lines starting with pip install)
+        shell_commands = []
+        python_lines = []
+        
+        for line in code_str.splitlines():
+            line_stripped = line.strip()
+            if line_stripped.startswith("pip install"):
+                shell_commands.append(line_stripped)
+            elif line_stripped.startswith("#!") and "pip" in line_stripped:
+                shell_commands.append(line_stripped.replace("#!", "").strip())
+            else:
+                python_lines.append(line)
+        
+        # 2. Execute shell commands first
+        logs = ""
+        for cmd in shell_commands:
+            print(f"DEBUG: Executing shell dependency install: {cmd}", flush=True)
+            res = CodeExecutor.execute_shell(cmd, project_dir)
+            logs += res + "\n"
+        
+        # 3. Create temp file for Python execution
         temp_file_name = "temp_exec.py"
         temp_file_path = os.path.join(project_dir, temp_file_name)
         
@@ -67,7 +87,8 @@ class CodeExecutor:
         before_files = set(os.listdir(project_dir))
         
         with open(temp_file_path, "w") as f:
-            f.write(code_str)
+            f.write('\n'.join(python_lines))
+            
         try:
             # Run using the system python3
             result = subprocess.run(
@@ -79,14 +100,15 @@ class CodeExecutor:
             after_files = set(os.listdir(project_dir))
             new_artifacts = list(after_files - before_files)
             
+            logs += f"Stdout: {result.stdout}\nStderr: {result.stderr}"
             return {
-                "stdout": result.stdout,
+                "stdout": logs,
                 "stderr": result.stderr,
                 "artifacts": new_artifacts
             }
         except Exception as e:
             return {
-                "stdout": "",
+                "stdout": logs,
                 "stderr": str(e),
                 "artifacts": []
             }
