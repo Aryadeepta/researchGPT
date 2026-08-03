@@ -5,17 +5,15 @@ import re
 import os
 
 class AdversarialBoard:
-
     def __init__(self, topic="general research"):
-        self.security_reviewer = ResearchAgent(f"You are a critical reviewer for {topic}. Focus on security, safety, and robustness.", model_queue=SMART_QUEUE)
-        self.architecture_reviewer = ResearchAgent(f"You are an architectural reviewer for {topic}. Focus on efficiency, feasibility, and system design.", model_queue=SMART_QUEUE)
-        self.methodology_reviewer = ResearchAgent(f"You are an experimental methodology reviewer for {topic}. Focus on benchmark fairness, statistical significance, and artifact provenance.", model_queue=SMART_QUEUE)
-        self.reproducibility_reviewer = ResearchAgent(f"You are a reproducibility reviewer for {topic}. Can this research be replicated from the artifacts provided?", model_queue=SMART_QUEUE)
-
+        # Fully generic, topic-agnostic reviewers
+        self.correctness_reviewer = ResearchAgent(f"You are a logical correctness and accuracy reviewer for {topic}. Focus on syntax errors, logical bugs, and semantic correctness.", model_queue=SMART_QUEUE)
+        self.completeness_reviewer = ResearchAgent(f"You are a completeness and system-design reviewer for {topic}. Verify if the artifacts meet the specified goals and contain all necessary implementation details.", model_queue=SMART_QUEUE)
+        self.methodology_reviewer = ResearchAgent(f"You are an experimental methodology and scientific reviewer for {topic}. Focus on evaluation metrics, benchmark fairness, and statistical validity.", model_queue=SMART_QUEUE)
+        self.reproducibility_reviewer = ResearchAgent(f"You are a reproducibility reviewer for {topic}. Verify if the step can be exactly replicated and if the artifact provenance is valid.", model_queue=SMART_QUEUE)
 
     def review_claim(self, step_name, logs, artifacts, step_idx, project_dir):
-        # Independent reviewers - already generalized in __init__
-        reviewers = [self.security_reviewer, self.architecture_reviewer, self.methodology_reviewer, self.reproducibility_reviewer]
+        reviewers = [self.correctness_reviewer, self.completeness_reviewer, self.methodology_reviewer, self.reproducibility_reviewer]
         reviews = []
         
         # Read artifact contents
