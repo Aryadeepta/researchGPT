@@ -5,13 +5,11 @@ on:
 
 jobs:
   test:
-    runs-on:
-      - self-hosted
-      - linux
-      - wsl
+    runs-on: ubuntu-latest
 
     steps:
+      - uses: actions/checkout@v4
       - run: hostname
       - run: pwd
       - run: whoami
-      - run: docker version
+      - run: python3 -m unittest discover -s tests

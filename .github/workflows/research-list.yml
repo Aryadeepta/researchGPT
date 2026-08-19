@@ -3,8 +3,10 @@ on:
   workflow_dispatch:
 jobs:
   list:
-    runs-on: [self-hosted, linux, research-control]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: List Research Runs
         run: scripts/research-control list
+        env:
+          RESEARCH_ARTIFACT_ROOT: ${{ github.workspace }}/research-runs

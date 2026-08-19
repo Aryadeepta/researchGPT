@@ -6,25 +6,47 @@ on:
         description: 'Unique Run ID'
         required: true
       runner:
-        description: 'Runner (cloud or laptop)'
+        description: 'Runner (github-hosted or local)'
         required: false
-        default: 'cloud'
+        default: 'github-hosted'
         type: choice
         options:
-          - cloud
-          - laptop
+          - github-hosted
+          - local
 jobs:
-  resume:
-    runs-on:
-      - self-hosted
-      - linux
-      - research-control
-      - ${{ github.event.inputs.runner || 'cloud' }}
+  resume-github-hosted:
+    if: ${{ github.event.inputs.runner == 'github-hosted' || github.event.inputs.runner == '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache/restore@v4
+        with:
+          path: research-runs/${{ github.event.inputs.run_id }}
+          key: research-${{ github.event.inputs.run_id }}-${{ github.run_number }}
+          restore-keys: research-${{ github.event.inputs.run_id }}-
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: research-state-${{ github.event.inputs.run_id }}
+          path: research-runs/${{ github.event.inputs.run_id }}
+      - name: Resume Research Run
+        run: scripts/research-control resume --run-id "${{ github.event.inputs.run_id }}" --max-nodes 1
+        env:
+          RESEARCH_ARTIFACT_STORE: local
+          RESEARCH_ARTIFACT_ROOT: ${{ github.workspace }}/research-runs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: research-state-${{ github.event.inputs.run_id }}
+          path: research-runs/${{ github.event.inputs.run_id }}/
+          overwrite: true
+      - uses: actions/cache/save@v4
+        with:
+          path: research-runs/${{ github.event.inputs.run_id }}
+          key: research-${{ github.event.inputs.run_id }}-${{ github.run_number }}
+  resume-local:
+    if: ${{ github.event.inputs.runner == 'local' }}
+    runs-on: [self-hosted, linux, research-control, local]
     steps:
       - uses: actions/checkout@v4
       - name: Resume Research Run
-        run: scripts/research-control resume --run-id "${{ github.event.inputs.run_id }}"
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GEMINI_CLI_APPROVAL_MODE: yolo
-          GEMINI_CLI_TRUST_WORKSPACE: true
+        run: scripts/research-control resume --run-id "${{ github.event.inputs.run_id }}" --max-nodes 1

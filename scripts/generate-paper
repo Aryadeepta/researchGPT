@@ -1,33 +1,8 @@
 #!/bin/bash
-# scripts/generate-paper
-set -e
+set -Eeo pipefail
 
-# Usage: scripts/generate-paper --run-dir <path-to-results-dir>
-
-run_dir=""
-while [[ $# -gt 0 ]]; do
-    case $1 in
-        --run-dir) run_dir="$2"; shift 2 ;;
-        *) echo "Unknown option: $1"; exit 1 ;;
-    esac
-done
-
-if [ -z "$run_dir" ]; then
-    echo "Usage: $0 --run-dir <path-to-results-dir>"
-    exit 1
-fi
-
-if [ ! -d "$run_dir" ]; then
-    echo "Error: Directory $run_dir does not exist."
-    exit 1
-fi
-
-# Build a fresh image to ensure code is updated
-docker build -t paper-gen-image -f Dockerfile.paper .
-
-# Use docker to run the draft_paper method
-docker run --rm \
-    -v "/home/aryad/research-agent-data:/home/aryad/research-agent-data" \
-    -e GOOGLE_API_KEY="${GOOGLE_API_KEY:-}" \
-    paper-gen-image \
-    -c 'import shutil, os; [shutil.rmtree(os.path.join(r, d)) for r, d, f in os.walk("/app") if d == "__pycache__"]; from main import ResearchOrchestrator; orch = ResearchOrchestrator(); orch.load_state("'"$run_dir"'"); orch.draft_paper()'
+echo "scripts/generate-paper is deprecated."
+echo "Research and paper generation are separate pipelines now."
+echo "Use: scripts/paper-control start --paper-id <paper> --research-run-id <run>"
+echo "Then: scripts/paper-control resume --paper-id <paper>"
+exit 2

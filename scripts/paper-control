@@ -1,0 +1,11 @@
+#!/bin/bash
+set -Eeo pipefail
+
+BASE_DIR="${RESEARCH_AGENT_DATA:-$HOME/research-agent-data}"
+export RESEARCH_ARTIFACT_STORE="${RESEARCH_ARTIFACT_STORE:-local}"
+export RESEARCH_ARTIFACT_ROOT="${RESEARCH_ARTIFACT_ROOT:-$BASE_DIR/runs}"
+export PAPER_ARTIFACT_ROOT="${PAPER_ARTIFACT_ROOT:-$BASE_DIR/papers}"
+REPO_DIR="$(dirname "$(dirname "$(realpath "$0")")")"
+export PYTHONPATH="$REPO_DIR"
+
+python3 -m src.paper_cli "$@"

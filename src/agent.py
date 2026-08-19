@@ -1,14 +1,13 @@
-from google import genai
 import os
 import subprocess
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
-from google.genai.errors import ClientError, ServerError
 
 class ResearchAgent:
     def __init__(self, system_instruction, model_queue=None):
-        api_key = os.environ.get("GOOGLE_API_KEY")
+        api_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
         if not api_key:
             raise ValueError("GOOGLE_API_KEY not set.")
+        from google import genai
         self.client = genai.Client(api_key=api_key)
 
         self.system_instruction = system_instruction
@@ -45,7 +44,7 @@ class ResearchAgent:
                 # If successful, update the index for future calls
                 self.current_model_idx = (self.current_model_idx + i) % len(self.model_queue)
                 return response.text
-            except (ClientError, ServerError) as e:
+            except Exception as e:
                 # Catch 429/404 (Client) or 503 (Server)
                 code = getattr(e, 'code', None)
                 if code in [429, 404, 503]:

@@ -12,37 +12,42 @@ on:
         description: 'Issue Number (optional, for notifications)'
         required: false
       runner:
-        description: 'Runner (cloud or laptop)'
+        description: 'Runner (github-hosted or local)'
         required: false
-        default: 'cloud'
+        default: 'github-hosted'
         type: choice
         options:
-          - cloud
-          - laptop
+          - github-hosted
+          - local
 jobs:
-  start:
-    runs-on:
-      - self-hosted
-      - linux
-      - research-control
-      - ${{ github.event.inputs.runner || 'cloud' }}
+  start-github-hosted:
+    if: ${{ github.event.inputs.runner == 'github-hosted' || github.event.inputs.runner == '' }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Auto-Diagnose Failure
-        if: failure()
-        run: echo "Workflow failed. Analyzing crash logs..." | scripts/gemini-chat
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GEMINI_CLI_APPROVAL_MODE: yolo
-          GEMINI_CLI_TRUST_WORKSPACE: true
+      - uses: actions/cache/restore@v4
+        with:
+          path: research-runs/${{ github.event.inputs.run_id }}
+          key: research-${{ github.event.inputs.run_id }}-${{ github.run_number }}
+          restore-keys: research-${{ github.event.inputs.run_id }}-
       - name: Start Research Run
         run: |
-          scripts/research-control start --run-id "${{ github.event.inputs.run_id }}" --topic "${{ github.event.inputs.topic }}" ${{ github.event.inputs.issue_num != '' && format('--issue {0}', github.event.inputs.issue_num) || '' }} || {
-            scripts/research-control reconcile
-            exit 1
-          }
+          scripts/research-control start --run-id "${{ github.event.inputs.run_id }}" --topic "${{ github.event.inputs.topic }}" --max-nodes 1
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GEMINI_CLI_APPROVAL_MODE: yolo
-          GEMINI_CLI_TRUST_WORKSPACE: true
+          RESEARCH_ARTIFACT_STORE: local
+          RESEARCH_ARTIFACT_ROOT: ${{ github.workspace }}/research-runs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: research-state-${{ github.event.inputs.run_id }}
+          path: research-runs/${{ github.event.inputs.run_id }}/
+      - uses: actions/cache/save@v4
+        with:
+          path: research-runs/${{ github.event.inputs.run_id }}
+          key: research-${{ github.event.inputs.run_id }}-${{ github.run_number }}
+  start-local:
+    if: ${{ github.event.inputs.runner == 'local' }}
+    runs-on: [self-hosted, linux, research-control, local]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start Research Run
+        run: scripts/research-control start --run-id "${{ github.event.inputs.run_id }}" --topic "${{ github.event.inputs.topic }}" --max-nodes 1

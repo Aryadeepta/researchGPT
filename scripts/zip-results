@@ -7,7 +7,8 @@ if [ $# -lt 1 ]; then
 fi
 
 RUN_ID=$1
-RUN_DIR="$HOME/research-agent-data/$RUN_ID"
+ARTIFACT_ROOT="${RESEARCH_ARTIFACT_ROOT:-$HOME/research-agent-data/runs}"
+RUN_DIR="$ARTIFACT_ROOT/$RUN_ID"
 
 if [ ! -d "$RUN_DIR" ]; then
     echo "Error: Run directory $RUN_DIR does not exist."

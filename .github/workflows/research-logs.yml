@@ -7,8 +7,20 @@ on:
         required: true
 jobs:
   logs:
-    runs-on: [self-hosted, linux, research-control]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/cache/restore@v4
+        with:
+          path: research-runs/${{ github.event.inputs.run_id }}
+          key: research-${{ github.event.inputs.run_id }}-${{ github.run_number }}
+          restore-keys: research-${{ github.event.inputs.run_id }}-
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: research-state-${{ github.event.inputs.run_id }}
+          path: research-runs/${{ github.event.inputs.run_id }}
       - name: Get Research Logs
         run: scripts/get-logs "${{ github.event.inputs.run_id }}"
+        env:
+          RESEARCH_ARTIFACT_ROOT: ${{ github.workspace }}/research-runs

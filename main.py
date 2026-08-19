@@ -13,6 +13,7 @@ from src.ledger import EvidenceLedger
 from src.adversarial import AdversarialBoard
 from src.config import *
 from src.rag import ProjectRAG, summarize_project
+from src.paper_gate import paper_readiness_report
 
 def prompt_from_template(template_str, mapping):
     return Template(template_str).safe_substitute(mapping)
@@ -23,16 +24,21 @@ class ResearchOrchestrator:
         self.project_dir = project_dir
         if self.project_dir:
             self.state["project_dir"] = self.project_dir
-        self.planner = ResearchAgent("You are a research planner. Output JSON workflows.", model_queue=SMART_QUEUE)
-        self.coder = ResearchAgent("You are a Python coder. Output runnable code only. For every expected artifact, you MUST implement Python code to write it to disk using 'with open(filename, \"w\") as f: f.write(content)'. Do not omit this.", model_queue=FAST_QUEUE)
-        self.adversary_board = AdversarialBoard(topic="general research")
+        self.planner = None
+        self.coder = None
+        self.adversary_board = None
+        if os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY"):
+            self.planner = ResearchAgent("You are a research planner. Output JSON workflows.", model_queue=SMART_QUEUE)
+            self.coder = ResearchAgent("You are a Python coder. Output runnable code only. For every expected artifact, you MUST implement Python code to write it to disk using 'with open(filename, \"w\") as f: f.write(content)'. Do not omit this.", model_queue=FAST_QUEUE)
+            self.adversary_board = AdversarialBoard(topic="general research")
         self.skills = {}
         self.stop_requested = False
         signal.signal(signal.SIGINT, self._handle_stop_signal)
         signal.signal(signal.SIGTERM, self._handle_stop_signal)
 
     def set_topic(self, topic):
-        self.adversary_board = AdversarialBoard(topic=topic)
+        if os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY"):
+            self.adversary_board = AdversarialBoard(topic=topic)
 
     def _handle_stop_signal(self, signum, frame):
         print(f"Stop signal received ({signum}).")
@@ -71,8 +77,20 @@ class ResearchOrchestrator:
     def draft_paper(self):
         print("Orchestrator: Implementing structured LaTeX drafting...")
         ledger = EvidenceLedger(self.project_dir)
-        if not ledger.is_paper_ready():
-            print("CRITICAL: Research not ready for paper drafting. Unverified claims exist.")
+        state_manifest = {"artifacts": []}
+        manifest_path = os.path.join(self.project_dir, "artifact_manifest.json")
+        if os.path.exists(manifest_path):
+            with open(manifest_path, "r") as f:
+                state_manifest = json.load(f)
+        state_for_gate = self.state if "dag" in self.state else {"dag": {"nodes": {}}, "status": self.state.get("status")}
+        readiness = paper_readiness_report(state_for_gate, ledger.data, state_manifest)
+        if not ledger.is_paper_ready() or not readiness["ready"]:
+            print("CRITICAL: Research not ready for paper drafting.")
+            for error in readiness["errors"]:
+                print(f" - {error}")
+            return
+        if not self.coder:
+            print("CRITICAL: Paper drafting requires a configured autonomous LLM provider; readiness checks completed without drafting.")
             return
         
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -103,6 +121,8 @@ class ResearchOrchestrator:
         print(f"LaTeX project generated in {draft_dir}")
 
     def run(self, field=None, resume=False):
+        if not self.planner or not self.coder or not self.adversary_board:
+            raise RuntimeError("Legacy linear orchestrator requires GOOGLE_API_KEY or GEMINI_API_KEY. Use scripts/research-control for artifact-driven local runs.")
         if not resume:
             self.set_topic(field)
             short_topic = re.sub(r'[^a-zA-Z0-9]', '_', field)[:50]
@@ -169,7 +189,7 @@ class ResearchOrchestrator:
         if self.state["idx"] >= len(self.state["steps"]):
             self.state["status"] = "RESEARCH_COMPLETE"
             self.save_state()
-            self.draft_paper()
+            print("Research complete. Paper generation is a separate explicit pipeline.")
         
         self._notify_completion()
 

@@ -2,35 +2,65 @@ name: Generate Research Paper
 on:
   workflow_dispatch:
     inputs:
-      run_dir:
-        description: 'Path to the finished research run directory (e.g., results/multi_agent_...)'
+      paper_id:
+        description: 'Unique Paper ID'
+        required: true
+      research_run_id:
+        description: 'Research run ID to package into a paper'
         required: true
       runner:
-        description: 'Runner (cloud or laptop)'
+        description: 'Runner (github-hosted or local)'
         required: false
-        default: 'cloud'
+        default: 'github-hosted'
         type: choice
         options:
-          - cloud
-          - laptop
+          - github-hosted
+          - local
 
 jobs:
-  generate:
-    runs-on:
-      - self-hosted
-      - linux
-      - research-control
-      - ${{ github.event.inputs.runner || 'cloud' }}
+  generate-github-hosted:
+    if: ${{ github.event.inputs.runner == 'github-hosted' || github.event.inputs.runner == '' }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+      - uses: actions/cache/restore@v4
+        with:
+          path: research-runs/${{ github.event.inputs.research_run_id }}
+          key: research-${{ github.event.inputs.research_run_id }}-${{ github.run_number }}
+          restore-keys: research-${{ github.event.inputs.research_run_id }}-
       - name: Generate Paper
-        run: scripts/generate-paper --run-dir "${{ github.event.inputs.run_dir }}"
+        run: |
+          scripts/paper-control start --paper-id "${{ github.event.inputs.paper_id }}" --research-run-id "${{ github.event.inputs.research_run_id }}"
+          scripts/paper-control resume --paper-id "${{ github.event.inputs.paper_id }}"
         env:
-          GOOGLE_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          
+          RESEARCH_LLM_PROVIDER: ${{ vars.RESEARCH_LLM_PROVIDER || 'none' }}
+          RESEARCH_ARTIFACT_ROOT: ${{ github.workspace }}/research-runs
+          PAPER_ARTIFACT_ROOT: ${{ github.workspace }}/papers
       - name: Upload Paper Artifact
         uses: actions/upload-artifact@v4
         with:
           name: paper-draft
-          path: "${{ github.event.inputs.run_dir }}/paper_draft/"
+          path: "${{ github.workspace }}/papers/${{ github.event.inputs.paper_id }}/"
+  generate-local:
+    if: ${{ github.event.inputs.runner == 'local' }}
+    runs-on: [self-hosted, linux, research-control, local]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache/restore@v4
+        with:
+          path: research-runs/${{ github.event.inputs.research_run_id }}
+          key: research-${{ github.event.inputs.research_run_id }}-${{ github.run_number }}
+          restore-keys: research-${{ github.event.inputs.research_run_id }}-
+      - name: Generate Paper
+        run: |
+          scripts/paper-control start --paper-id "${{ github.event.inputs.paper_id }}" --research-run-id "${{ github.event.inputs.research_run_id }}"
+          scripts/paper-control resume --paper-id "${{ github.event.inputs.paper_id }}"
+        env:
+          RESEARCH_LLM_PROVIDER: ${{ vars.RESEARCH_LLM_PROVIDER || 'none' }}
+          RESEARCH_ARTIFACT_ROOT: ${{ github.workspace }}/research-runs
+          PAPER_ARTIFACT_ROOT: ${{ github.workspace }}/papers
+      - name: Upload Paper Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: paper-draft
+          path: "${{ github.workspace }}/papers/${{ github.event.inputs.paper_id }}/"

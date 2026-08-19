@@ -17,5 +17,5 @@ mkdir -p $HOME/research-agent-data $HOME/gemini-code-tasks $HOME/gemini-worktree
 echo "Remaining manual steps:"
 echo "1. Log out and back in to apply docker group membership."
 echo "2. Follow GitHub documentation to register the self-hosted runner."
-echo "3. Add 'cloud', 'oracle', 'arm64', 'research-control' labels to the runner."
+echo "3. For optional legacy Oracle execution, add explicit labels such as 'oracle', 'arm64', and 'research-control'. Normal runs do not use this runner."
 echo "4. Configure GEMINI_API_KEY in the runner environment or secrets."

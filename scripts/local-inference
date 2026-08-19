@@ -1,0 +1,86 @@
+#!/bin/bash
+set -Eeo pipefail
+
+BASE_DIR="${RESEARCH_AGENT_DATA:-$HOME/research-agent-data}"
+export RESEARCH_ARTIFACT_ROOT="${RESEARCH_ARTIFACT_ROOT:-$BASE_DIR/runs}"
+REPO_DIR="$(dirname "$(dirname "$(realpath "$0")")")"
+export PYTHONPATH="$REPO_DIR"
+export RESEARCH_LOCAL_PROFILE_ROOT="${RESEARCH_LOCAL_PROFILE_ROOT:-$REPO_DIR/.research-runs}"
+
+CMD="${1:-profile}"
+shift || true
+
+case "$CMD" in
+  profile)
+    python3 - <<'PY'
+import json
+from src.local_inference import LocalInferenceManager
+print(json.dumps(LocalInferenceManager().build_profile(), indent=2, sort_keys=True))
+PY
+    ;;
+  benchmark)
+    python3 - <<'PY'
+import json
+import sys
+from src.local_inference import LocalInferenceManager
+result = LocalInferenceManager().benchmark_configurations()
+print(json.dumps(result, indent=2, sort_keys=True))
+if result.get("benchmark_status") == "REFUSED_SMOKE_FAILED":
+    sys.exit(2)
+PY
+    ;;
+  smoke)
+    python3 - <<'PY'
+import json
+from src.local_inference import LocalInferenceManager
+result = LocalInferenceManager().smoke_test()
+summary = result["summary"]
+print(summary["status"])
+print("model:", summary["model"])
+print("quantization:", summary["quantization"])
+print("prompt_tokens_per_second:", summary["prompt_tokens_per_second"])
+print("generation_tokens_per_second:", summary["generation_tokens_per_second"])
+print("failure_class:", summary["failure_class"])
+print("parsed_response:", summary["parsed_response"])
+print("stdout:")
+print(summary["stdout"])
+print("stderr:")
+print(summary["stderr"])
+print("full_diagnostic_json:")
+print(json.dumps(result, indent=2, sort_keys=True))
+PY
+    ;;
+  diagnostics)
+    python3 - <<'PY'
+import json
+from src.local_inference import RuntimeRegistry, probe_loopback_bind
+runtimes = RuntimeRegistry().discover()
+selected = next((item for item in runtimes if item.get("available") and item.get("backend_compatibility") == "COMPATIBLE"), None)
+print(json.dumps({"loopback_bind": probe_loopback_bind(), "discovered_backends": runtimes,
+                  "selected_backend": selected}, indent=2, sort_keys=True))
+PY
+    ;;
+  install)
+    PROFILE=""
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --profile) PROFILE="$2"; shift 2 ;;
+        *) echo "Unknown option: $1"; exit 1 ;;
+      esac
+    done
+    if [ -z "$PROFILE" ]; then
+      echo "Usage: scripts/local-inference install --profile <fast|default|quality>"
+      exit 1
+    fi
+    PROFILE="$PROFILE" python3 - <<'PY'
+import json
+import os
+from src.local_inference import ModelRegistry
+print(json.dumps(ModelRegistry().install_profile(os.environ["PROFILE"]), indent=2, sort_keys=True))
+PY
+    ;;
+  *)
+    echo "Usage: scripts/local-inference {profile|benchmark|smoke|diagnostics|install --profile <name>}"
+    exit 1
+    ;;
+esac
