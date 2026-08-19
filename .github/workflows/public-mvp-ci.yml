@@ -1,0 +1,31 @@
+name: Public MVP CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  public-mvp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile public MVP modules
+        run: python3 -m compileall -q src tools scripts/public-release-audit
+      - name: Test DAG, provenance, replay, manifests, and deterministic proof paths
+        run: >-
+          python3 -m unittest
+          tests.test_architecture_contracts
+          tests.test_run_inspection
+          tests.test_skill_manifest
+          tests.test_proof_orchestrator
+          tests.test_orchestrator_benchmark
+          tests.test_public_release_audit
+      - name: Check shell entry points
+        run: bash -n scripts/public-release-audit scripts/research-control scripts/proof-orchestrator
