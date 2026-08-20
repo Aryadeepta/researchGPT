@@ -22,6 +22,7 @@ from tools.proofbench.kimina_specialist import KiminaMicroProofSolver, extract_c
 from tools.proofbench.proof_task import ProofTask
 from tools.proofbench.proof_engineering import (
     ProofDag, ProofDagNode, available_capabilities, capability_context,
+    ProofTerminal, additive_basis_model, create_handoff_bundle,
     classify_obligation, recovery_stages,
 )
 
@@ -415,7 +416,8 @@ class ProofOrchestrator:
         outcome,goal,diag=self.extractor.probe(case,initial); self.validations+=1
         if not goal: return {"case_id":task_identity(case),"pass":False,"code":outcome.value,"diagnostic":bounded(diag)}
         self.visited.add(goal.fingerprint); root=SearchNode(0,None,ProofState(initial,goal),status="frontier"); frontier=[root]; nodes=[root]; root_bp=self._blueprint_node(goal.normalized, [], "initial.goal", initial, status="UNVERIFIED"); blueprint_for_search={0:root_bp.node_id if root_bp else None}; self.event("INITIAL_GOAL",fingerprint=goal.fingerprint,goal=goal.normalized,shape=goal_shape(root.state))
-        assessment=classify_obligation(goal.normalized, diagnostics=diag)
+        recovery_metadata=getattr(case, "recovery_metadata", {})
+        assessment=classify_obligation(goal.normalized, metadata=recovery_metadata, diagnostics=diag)
         self.event("OBLIGATION_CLASSIFIED", obligation_class=assessment.obligation_class, estimated_size=assessment.estimated_size, reasoning=assessment.reasoning, strategy=assessment.selected_recovery_strategy)
         self.events.append({"event":"CAPABILITY_MANIFEST", **capability_context(self.capabilities)})
         self.events.extend({"event":"RECOVERY_STAGE", **stage} for stage in recovery_stages(assessment, self.capabilities))
@@ -511,15 +513,29 @@ class ProofOrchestrator:
                         next(x for x in self.blueprint if x.node_id==parent_bp).dependencies.append(bp.node_id)
                     self.event("CHECKPOINT_CREATED",node=child.node_id)
             if not frontier: self.backtracks+=1; self.event("BACKTRACK",node=node.node_id,reason="BRANCH_EXHAUSTED")
-        self.event("SEARCH_EXHAUSTED",nodes=len(nodes)); return self._finish(case,None,None,nodes)
-    def _finish(self,case,final,prefix,nodes):
+        self.event("SEARCH_EXHAUSTED",nodes=len(nodes)); return self._finish(case,None,None,nodes,assessment=assessment,goal=goal.normalized,diagnostic=diag)
+    def _finish(self,case,final,prefix,nodes,assessment=None,goal="",diagnostic=""):
         kimina = self.kimina.metadata() if self.kimina else {"enabled":False}
         if self.kimina:
             kimina = {**kimina,
                       "case_invocations": self.kimina.invocations - self._kimina_start_invocations,
                       "case_generation_failures": len(self.kimina.failures) - self._kimina_start_failures}
         artifact = source(case,"by\n"+prefix.text()) if prefix else ""
-        record={"case_id":task_identity(case),"level":case.level,"pass":bool(final and final.ok),"code":final.code if final else "SEARCH_EXHAUSTED","prefix":prefix.tactics if prefix else [],"nodes":len(nodes),"visited_states":len(self.visited),"backtracks":self.backtracks,"lean_validations":self.validations,"max_depth":max((n.state.depth for n in nodes),default=0),"kimina":kimina,"task_source_hash":getattr(case,"source_hash",None) or hashlib.sha256((case.declaration+case.theorem).encode()).hexdigest(),"artifact_sha256":hashlib.sha256(artifact.encode()).hexdigest() if artifact else "","accepted_strategies":[a.strategy for a in self.attempts if a.outcome in {ProbeOutcome.FINAL_PASS.value,ProbeOutcome.VALID_NEW_GOAL_STATE.value}]}
+        obligation_hash=getattr(case,"source_hash",None) or hashlib.sha256((case.declaration+case.theorem).encode()).hexdigest()
+        record={"case_id":task_identity(case),"level":case.level,"pass":bool(final and final.ok),"code":final.code if final else "SEARCH_EXHAUSTED","terminal_state":ProofTerminal.VERIFIED.value if final and final.ok else ProofTerminal.PROOF_RECOVERY_EXHAUSTED.value,"prefix":prefix.tactics if prefix else [],"nodes":len(nodes),"visited_states":len(self.visited),"backtracks":self.backtracks,"lean_validations":self.validations,"max_depth":max((n.state.depth for n in nodes),default=0),"kimina":kimina,"task_source_hash":obligation_hash,"artifact_sha256":hashlib.sha256(artifact.encode()).hexdigest() if artifact else "","accepted_strategies":[a.strategy for a in self.attempts if a.outcome in {ProbeOutcome.FINAL_PASS.value,ProbeOutcome.VALID_NEW_GOAL_STATE.value}]}
+        if not record["pass"]:
+            meta=getattr(case,"recovery_metadata",{})
+            model=None
+            if meta.get("finite_additive_basis"):
+                spec=meta["finite_additive_basis"]
+                model=additive_basis_model(int(spec["n"]),set(spec.get("forbidden",[])),int(spec["max_selected"]),obligation_hash)
+            # A handoff is required for finite / SAT-style goals even without a
+            # model: it still records the exact Lean residual and resume gate.
+            finite=assessment and assessment.obligation_class in {"FINITE_DECIDABLE","FINITE_COMBINATORIAL","SAT_LIKE","ENUMERATIVE_LOWER_BOUND"}
+            if model or finite:
+                bundle=create_handoff_bundle(self.result_dir/"handoff",obligation_id=self.task_id,obligation_hash=obligation_hash,goal=goal or case.theorem,classification=assessment.obligation_class if assessment else "UNKNOWN",model=model,verified_prefix=record["prefix"],dag_state={k:asdict(v) for k,v in self.proof_dag.nodes.items()},attempts=self.attempts,diagnostics=diagnostic or "search exhausted",capabilities=self.capabilities)
+                record["terminal_state"]=bundle["terminal_state"]; record["handoff_path"]=str(self.result_dir/"handoff"/"handoff_bundle.json")
+                self.event("ACTIONABLE_HANDOFF",artifacts=len(bundle["hashes"]),bottleneck="residual-unsat" if model else "lean-residual")
         if self.progress: print(f"[proof] task={self.task_id} result={'PASS' if record['pass'] else 'FAIL'} nodes={record['nodes']} lean_checks={self.validations}", file=sys.stderr)
         record["blueprint_nodes"]=len(self.blueprint)
         record["capability_manifest"]=capability_context(self.capabilities)
@@ -542,6 +558,22 @@ def prove_task(task_path, *, result_root, max_nodes=64, max_depth=16, progress=F
 
 def main(argv=None):
     argv=list(argv if argv is not None else sys.argv[1:])
+    if argv and argv[0] == "session":
+        from tools.proofbench.proof_session import ProofSession
+        p=argparse.ArgumentParser(prog="proof-orchestrator session")
+        sub=p.add_subparsers(dest="session_command", required=True)
+        start=sub.add_parser("start"); start.add_argument("--task", required=True); start.add_argument("--result-root", required=True); start.add_argument("--explain", action="store_true"); start.add_argument("--disable-closer", action="store_true"); start.add_argument("--progress", action="store_true")
+        inspect=sub.add_parser("inspect"); inspect.add_argument("--session", required=True)
+        resume=sub.add_parser("resume"); resume.add_argument("--session", required=True); resume.add_argument("--human-lemma", required=True); resume.add_argument("--disable-closer", action="store_true"); resume.add_argument("--progress", action="store_true")
+        args=p.parse_args(argv[1:])
+        if args.session_command == "start":
+            session=ProofSession.from_task(args.result_root,args.task).start(explain=args.explain,allow_closer=not args.disable_closer,progress=args.progress)
+        elif args.session_command == "inspect":
+            session=ProofSession.open(args.session)
+        else:
+            session=ProofSession.open(args.session).resume(args.human_lemma,allow_closer=not args.disable_closer,progress=args.progress)
+        print(json.dumps({"session_id":session.session_id,"session":str(session.path),"status":session.status.value,"metrics":session.metrics},sort_keys=True))
+        return 0 if session.status.value == ProofTerminal.VERIFIED.value else 2
     if argv and argv[0] == "prove":
         p=argparse.ArgumentParser(); p.add_argument("prove"); p.add_argument("--task",required=True); p.add_argument("--result-root",required=True); p.add_argument("--max-nodes",type=int,default=64); p.add_argument("--max-depth",type=int,default=16); p.add_argument("--progress",action="store_true"); args=p.parse_args(argv)
         return prove_task(args.task,result_root=args.result_root,max_nodes=args.max_nodes,max_depth=args.max_depth,progress=args.progress)

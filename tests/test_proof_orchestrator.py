@@ -66,4 +66,16 @@ class OrchestratorTests(unittest.TestCase):
         ex=LeanGoalExtractor(self.lean,self.root/"forbidden"); ex.workspace.mkdir()
         self.assertEqual(ex.probe(c,ProofPrefix(["sorry"]))[0],ProbeOutcome.INTEGRITY_FAILURE)
 
+    def test_finite_failure_is_actionable_handoff(self):
+        c=self.case("(P : Prop) : P")
+        # This intentionally exhausts direct Lean/search while retaining a
+        # generic finite recovery adapter.  The bundle is recovery data only.
+        object.__setattr__(c, "recovery_metadata", {"candidate_count": 1000,
+            "finite_additive_basis": {"n": 8, "forbidden": [2], "max_selected": 3}})
+        r=self.solve_case(c,max_nodes=1,max_depth=0)
+        self.assertFalse(r["pass"]); self.assertEqual(r["terminal_state"],"ACTIONABLE_HANDOFF")
+        handoff=Path(r["handoff_path"])
+        self.assertTrue(handoff.is_file()); self.assertTrue((handoff.parent/"residual.cnf").is_file())
+        self.assertIn("bottleneck",json.loads(handoff.read_text()))
+
 if __name__ == "__main__": unittest.main()
