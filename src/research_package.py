@@ -7,6 +7,12 @@ from src.objective_coverage import objective_coverage_sufficient
 from src.research_state import now_iso
 
 
+FORMAL_TRUST_LEVELS = {
+    "KERNEL_ONLY", "NATIVE_DECIDE", "EXTERNAL_CERTIFICATE_CHECKED", "COMPUTATIONAL_ONLY",
+}
+FORMAL_EXACT_CLAIM_ALLOWED_TRUST = {"KERNEL_ONLY", "NATIVE_DECIDE", "EXTERNAL_CERTIFICATE_CHECKED"}
+
+
 def stable_hash(data):
     payload = json.dumps(data, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
@@ -95,6 +101,69 @@ def verify_research_package(store, run_id, version=None):
     manifest_failures = store.verify_manifest(run_id)
     if manifest_failures:
         return {"status": "FAIL", "reasons": manifest_failures}
+    formal_failures = _verify_formal_claim_evidence(store, run_id, package)
+    if formal_failures:
+        return {"status": "FAIL", "reasons": formal_failures}
     if not package.get("research_readiness_report", {}).get("ready"):
         return {"status": "WAITING", "reasons": package.get("research_readiness_report", {}).get("errors", [])}
     return {"status": "PASS", "package": {"package_id": package["package_id"], "version": package["version"], "hash": package["package_hash"]}}
+
+
+def _verify_formal_claim_evidence(store, run_id, package):
+    """Enforce that formal exact claims name durable, self-verifying evidence.
+
+    Artifact paths are deliberately repository-relative manifest keys.  In
+    particular, a scratch path can never be the evidence reference.
+    """
+    failures = []
+    manifest = {entry.get("path"): entry for entry in package.get("artifact_manifest", {}).get("artifacts", [])}
+    for claim in package.get("claim_evidence_ledger", {}).get("claims", []):
+        modalities = set(claim.get("evidence_modalities", []))
+        if "formal_proof" not in modalities:
+            continue
+        claim_id = claim.get("claim_id", "<unknown>")
+        evidence = claim.get("formal_evidence")
+        if not isinstance(evidence, dict):
+            failures.append(f"{claim_id}: missing formal evidence metadata")
+            continue
+        source = evidence.get("artifact_path")
+        expected_sha = evidence.get("artifact_sha256")
+        if not source or not expected_sha:
+            failures.append(f"{claim_id}: formal artifact path/hash missing")
+            continue
+        if source.startswith("/") or "/tmp/" in source or source not in manifest:
+            failures.append(f"{claim_id}: formal artifact is not a durable manifest artifact")
+            continue
+        artifact = Path(store.get_artifact_path(run_id, source))
+        if not artifact.is_file():
+            failures.append(f"{claim_id}: formal artifact missing")
+            continue
+        actual_sha = hashlib.sha256(artifact.read_bytes()).hexdigest()
+        if actual_sha != expected_sha or manifest[source].get("sha256") != expected_sha:
+            failures.append(f"{claim_id}: formal artifact checksum mismatch")
+        metadata_path = evidence.get("verifier_metadata_artifact")
+        if not metadata_path or metadata_path.startswith("/") or "/tmp/" in metadata_path or metadata_path not in manifest:
+            failures.append(f"{claim_id}: verifier metadata is not a durable manifest artifact")
+            continue
+        try:
+            metadata = json.loads(Path(store.get_artifact_path(run_id, metadata_path)).read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            failures.append(f"{claim_id}: verifier metadata missing or invalid")
+            continue
+        trust = metadata.get("verifier_trust")
+        if trust not in FORMAL_TRUST_LEVELS:
+            failures.append(f"{claim_id}: verifier trust classification missing or invalid")
+        if metadata.get("verifier") != "Lean" or metadata.get("exit_code") != 0:
+            failures.append(f"{claim_id}: formal verifier did not pass")
+        if metadata.get("input_sha256") != expected_sha:
+            failures.append(f"{claim_id}: verifier input does not match durable artifact")
+        required = ("command", "executable", "executable_version", "stdout_artifact", "stderr_artifact", "axioms_artifact", "claim_obligation_sha256")
+        if any(not metadata.get(key) for key in required):
+            failures.append(f"{claim_id}: incomplete verifier metadata")
+        for key in ("stdout_artifact", "stderr_artifact", "axioms_artifact"):
+            value = metadata.get(key)
+            if value and value not in manifest:
+                failures.append(f"{claim_id}: {key} is not durable")
+        if claim.get("claim_class") == "bounded_correctness" and trust not in FORMAL_EXACT_CLAIM_ALLOWED_TRUST:
+            failures.append(f"{claim_id}: verifier trust level is not allowed for an exact formal claim")
+    return failures

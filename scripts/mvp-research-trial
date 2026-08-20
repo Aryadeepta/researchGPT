@@ -1,0 +1,6 @@
+#!/bin/bash
+set -Eeo pipefail
+REPO_DIR="$(dirname "$(dirname "$(realpath "$0")")")"
+export PYTHONPATH="$REPO_DIR"
+export RESEARCH_ALLOW_PAID_FALLBACK=0
+python3 -m src.mvp_erdos791_trial "$@"
