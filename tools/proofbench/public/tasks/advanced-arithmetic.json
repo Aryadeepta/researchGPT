@@ -1,0 +1,1 @@
+{"task_id":"advanced-arithmetic","theorem":"advanced_arithmetic","declaration":"(x y : Nat) (h : x ≤ y) : x + 2 ≤ y + 2","expected_type":"∀ (x y : Nat), x ≤ y → x + 2 ≤ y + 2","provenance":"public advanced sibling"}

@@ -1,0 +1,1 @@
+{"task_id":"demo-nat-add-zero","theorem":"nat_add_zero","declaration":"(n : Nat) : n + 0 = n","expected_type":"∀ (n : Nat), n + 0 = n","provenance":"public demo"}

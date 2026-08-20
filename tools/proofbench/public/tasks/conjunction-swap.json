@@ -1,0 +1,1 @@
+{"task_id":"demo-conjunction-swap","theorem":"conjunction_swap","declaration":"(P Q : Prop) (h : P ∧ Q) : Q ∧ P","expected_type":"∀ (P Q : Prop), P ∧ Q → Q ∧ P","provenance":"public demo"}

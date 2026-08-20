@@ -1,0 +1,1 @@
+{"task_id":"advanced-equality","theorem":"advanced_equality","declaration":"(a b : Nat) (h : a = b) : a + 1 = b + 1","expected_type":"∀ (a b : Nat), a = b → a + 1 = b + 1","provenance":"public advanced sibling"}

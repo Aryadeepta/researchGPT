@@ -1,0 +1,1 @@
+{"task_id":"advanced-context-compose","theorem":"advanced_context_compose","declaration":"(A B C D : Prop) (hAB : A → B) (hBC : B → C) (hCD : C → D) (hA : A) : D","expected_type":"∀ (A B C D : Prop), (A → B) → (B → C) → (C → D) → A → D","provenance":"public advanced sibling"}

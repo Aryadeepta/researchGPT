@@ -1,0 +1,1 @@
+{"task_id":"demo-implication-composition","theorem":"implication_composition","declaration":"(P Q R : Prop) (hPQ : P → Q) (hQR : Q → R) : P → R","expected_type":"∀ (P Q R : Prop), (P → Q) → (Q → R) → P → R","provenance":"public demo"}

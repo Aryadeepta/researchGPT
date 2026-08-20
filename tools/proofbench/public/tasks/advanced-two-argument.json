@@ -1,0 +1,1 @@
+{"task_id":"advanced-two-argument","theorem":"advanced_two_argument","declaration":"(A B C : Prop) (h : A → B → C) (ha : A) (hb : B) : C","expected_type":"∀ (A B C : Prop), (A → B → C) → A → B → C","provenance":"public advanced sibling"}

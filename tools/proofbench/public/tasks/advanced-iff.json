@@ -1,0 +1,1 @@
+{"task_id":"advanced-iff","theorem":"advanced_iff","declaration":"(A B : Prop) (h : A ↔ B) (ha : A) : B","expected_type":"∀ (A B : Prop), (A ↔ B) → A → B","provenance":"public advanced sibling"}
