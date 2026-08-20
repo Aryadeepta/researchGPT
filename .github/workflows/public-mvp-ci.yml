@@ -16,6 +16,16 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
+      - name: Install Lean
+        run: |
+          curl -sSf https://elan.lean-lang.org/elan-init.sh | \
+            sh -s -- -y --default-toolchain leanprover/lean4:v4.33.0
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Verify Lean
+        run: |
+          lean --version
       - name: Compile public MVP modules
         run: python3 -m compileall -q src tools scripts/public-release-audit
       - name: Test DAG, provenance, replay, manifests, and deterministic proof paths
