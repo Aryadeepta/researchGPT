@@ -1,4 +1,4 @@
-# H4 — Langford-style pairing
+# H4 - Langford-style pairing
 
 Implement JSON-stdin/stdout `solution.py`. Given `n` and `anchor_parity`, find
 a length `2*n` sequence with two copies of each 1..n. If occurrences of k are

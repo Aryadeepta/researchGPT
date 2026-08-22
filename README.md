@@ -1,58 +1,84 @@
 # ResearchGPT
 
-## Verification-First Autonomous Research Orchestrator
+**A verification-first research orchestrator that turns open-ended objectives into executable task graphs, generated skills, and checked artifacts.**
 
-ResearchGPT explores how LLM-driven research workflows can be made auditable, reproducible, and verification-gated. Its trusted product is not model output: it is the durable evidence, deterministic validation, and provenance that support a report.
+ResearchGPT is an experimental agent runtime for long-running research workflows. A run starts with a research objective, works out what capabilities and artifacts are needed, builds an executable dependency graph for that work, and verifies the resulting evidence before accepting claims.
+
+The project focuses on engineering problems that become important when an agent has to do more than answer one prompt: decomposition, scheduling, typed state, tool generation, validation, retries, provenance, replay, and human handoff.
+
+## Highlights
+
+- Builds a per-run executable DAG from research capability requirements.
+- Creates or resolves scoped executable skills for tasks the runtime needs to perform.
+- Tracks dependencies and schedules work from explicit node state.
+- Stores artifacts with hashes, provenance, and claim-to-evidence links.
+- Uses deterministic verification gates before evidence is accepted.
+- Preserves verified progress when one part of a run fails.
+- Supports structured repair requests and resumable human handoffs.
+- Integrates Lean for formally checked proof obligations.
+- Keeps research execution separate from later paper generation.
+
+The main systems idea is the generated execution graph. ResearchGPT first identifies the capabilities required by a research objective. Those requirements are turned into task nodes with explicit inputs, outputs, evidence roles, and verification contracts. The runtime can then execute and validate each task while keeping the dependency structure visible.
 
 ```mermaid
 flowchart TD
-    O[Objective] --> D[Typed Research DAG]
-    D --> W[Workers / generated skills\nUNTRUSTED output]
-    W --> A[Untrusted artifacts]
-    A --> V[Deterministic verifiers]
-    V -->|PASS| S[Verified state]
-    V -->|FAIL| R[Replan / repair / human handoff]
-    R --> D
-    S --> P[Immutable, versioned ResearchPackage]
-    P --> E[Evidence-backed report]
+    O[Research objective] --> R[Typed research workflow]
+    R --> C[Capability requirements]
+    C --> S[Skill discovery or creation]
+    S --> D[Generated executable artifact DAG]
 
-    T[Problem-specific task / generated skill] --> SA[ProofSemanticAdapter]
-    SA --> PS[Generic ProofSession / proof-engineering core]
-    PS --> V
+    D --> X[Execute ready tasks]
+    X --> A[Persist artifacts]
+    A --> V[Deterministic verification]
+
+    V -->|PASS| P[Verified research state]
+    V -->|FAIL| H[Repair, replan, or handoff]
+    H --> R
+
+    P --> RP[Versioned ResearchPackage]
+    RP --> E[Evidence-backed report]
 ```
 
-The deterministic supervisor owns orchestration and validation. Model and tool output remain **UNTRUSTED** until a verifier accepts the relevant artifact. LLM output is not empirical evidence.
+This gives ResearchGPT many of the same concerns as a workflow engine: dependency scheduling, state transitions, failure recovery, typed interfaces, artifact storage, validation, and replay. The research setting adds another requirement. The system must keep track of which outputs are evidence and which outputs are still proposals.
 
-## Proof-first MVP
+## How the execution graph works
 
-ResearchGPT tries to prove the theorem itself. On success, it exposes checked proof artifacts and provenance. When it stalls, it preserves verified progress, reduces the failure to a precise bottleneck, requests targeted help, treats that help as untrusted, checks it, and resumes the same `ProofSession`.
+The outer research workflow provides the lifecycle of a run. It covers stages such as question discovery, evidence discovery, feasibility analysis, capability analysis, skill creation, execution, validation, falsification, replication, and claim adjudication.
 
-The MVP includes two demonstration classes.
+Inside that workflow, ResearchGPT builds a separate executable artifact DAG for the work required by the current objective.
 
-### Finite constrained additive-basis experiment
+Each generated task can record:
 
-Motivated by Erdős Problem #791, this bounded experiment combines autonomous semantic deductions, exact finite search, Lean-checked proof artifacts, durable evidence, claim/evidence hashes, and verifier-gated `ResearchPackage` construction. Its finite certificate uses Lean `native_decide`, with declared trust class `NATIVE_DECIDE`; it is **not** a pure kernel-reduction proof.
+- the capability it requires;
+- its input artifacts;
+- its expected outputs;
+- its relationship to the research objective;
+- the evidence modality it produces;
+- the evidence contract it is expected to satisfy.
 
-This is a finite constrained experiment only. It does not solve or estimate the asymptotic parent problem. Its novelty status is `UNCHECKED`, and ResearchGPT makes no novel mathematical-result claim.
+Capability requirements are resolved into executable skills before those tasks run. This lets problem-specific behavior live in scoped skills while the scheduler and verification machinery remain generic.
 
-### Generality and assisted-proof experiment
-
-After the generic proof core was frozen, the system attempted a previously unseen, structurally different finite problem. It reached `ACTIONABLE_HANDOFF` instead of fabricating success. A human then supplied a small counting insight; the system checked the semantic hint, resumed the **same** proof session, used the verified hint causally, reduced the residual problem, and completed a Lean-checked finite result.
-
-This is evidence for resumable, verifier-gated proof engineering—not a novel theorem or a benchmark record.
+A graph representation also makes failure easier to handle. The runtime can identify the blocked task, preserve artifacts from completed work, produce a targeted repair request, and continue from the existing state after the problem is resolved.
 
 ## Quickstart
 
-Prerequisites: `python3` and a Lean executable available on `PATH`. The public MVP uses local deterministic computation and does not require paid inference.
+Requirements:
+
+- `python3`
+- Lean 4 through elan or `PATH`
+
+Run the public verifier-gated research trial:
 
 ```bash
 export RESEARCH_ALLOW_PAID_FALLBACK=0
 scripts/mvp-research-trial --root results/mvp-trial
 ```
 
-The command writes immutable artifacts, verifier records, a provenance manifest, and a `ResearchPackage` beneath the supplied root. Use a new root for each run.
+The trial creates artifacts, verifier records, provenance data, and a versioned `ResearchPackage` under the supplied root.
 
-To exercise the durable proof-session interface with a committed public task:
+Use a fresh root for each run.
+
+### Start a proof session
 
 ```bash
 scripts/proof-orchestrator session start \
@@ -60,53 +86,149 @@ scripts/proof-orchestrator session start \
   --result-root proofbench-results/session-demo
 ```
 
-If the session returns `ACTIONABLE_HANDOFF`, inspect the emitted session and resume it only with a proposed lemma that can be independently checked:
+Inspect the session:
 
 ```bash
-scripts/proof-orchestrator session inspect --session proofbench-results/session-demo/SESSION_ID
+scripts/proof-orchestrator session inspect \
+  --session proofbench-results/session-demo/SESSION_ID
+```
+
+If the proof reaches `ACTIONABLE_HANDOFF`, resume it with a proposed lemma:
+
+```bash
 scripts/proof-orchestrator session resume \
   --session proofbench-results/session-demo/SESSION_ID \
   --human-lemma 'your proposed formal lemma'
 ```
 
-Replace `SESSION_ID` with the identifier printed by `session start`. A human suggestion is still untrusted until formal checking succeeds.
+The lemma has to pass formal checking before it can change verified proof state.
 
-Focused MVP checks:
+### Focused checks
 
 ```bash
 python3 -m unittest \
   tests.test_mvp_erdos791_trial \
   tests.test_proof_session \
   tests.test_research_package_proof_evidence
+
 scripts/public-release-audit
 ```
 
-These are focused checks, not a claim that the entire repository test suite is green.
+The public GitHub workflow also runs focused architecture and proof checks on pushes to `main`.
 
-## Evidence and trust model
+## Verification model
 
-`model proposal != verified evidence`.
+ResearchGPT separates proposal generation from evidence acceptance.
 
-For an exact formal claim, ResearchGPT requires a durable artifact, its hash, a verifier `PASS`, an allowed declared verifier trust class, and a claim-to-obligation linkage. `ResearchPackage` construction records immutable, versioned evidence where supported by the runtime; provenance establishes lineage, not correctness on its own.
+Workers, language models, generated skills, and external suggestions can propose artifacts. The supervisor controls state transitions and verifier gates.
 
-The system distinguishes the evidence from the mechanism that produced it. Executable checks can validate implementations and finite computations; Lean can check encoded formal propositions under its declared trust model. Neither makes model prose into empirical evidence.
+For an exact formal claim, the current pipeline expects:
+
+- a durable artifact;
+- a recorded artifact hash;
+- a verifier result of `PASS`;
+- an allowed verifier trust class;
+- a link between the claim and the verified obligation.
+
+Executable checks cover implementations and finite computations. Lean checks encoded formal propositions under its declared trust model. Provenance records where artifacts came from and how they moved through the workflow.
+
+SAT and CNF artifacts are currently advisory unless a checked certificate path is available.
+
+## Proof engineering
+
+Formal proof is the main public MVP because it gives the system a strong verifier boundary.
+
+A `ProofSession` stores the theorem, current obligations, verified lemmas, failed attempts, handoff state, and resume metadata.
+
+Problem-specific semantics are provided through `ProofSemanticAdapter` implementations. The generic proof session does not need theorem-specific logic built into its core.
+
+```mermaid
+flowchart LR
+    T[Problem-specific task] --> A[ProofSemanticAdapter]
+    A --> P[ProofSession]
+    P --> C[Proof candidates]
+    C --> L[Lean verification]
+
+    L -->|PASS| V[Verified proof state]
+    L -->|FAIL| H[Repair or ACTIONABLE_HANDOFF]
+    H --> P
+```
+
+Proof search can use structural tactics, context-derived lemmas, bounded computation, generated micro-lemmas, and specialist model proposals. These mechanisms produce candidates. Lean determines whether a formal proof artifact is accepted.
+
+### Finite additive-basis trial
+
+One public trial studies a bounded problem motivated by Erdős Problem #791.
+
+The trial combines:
+
+- semantic deductions;
+- exact finite search;
+- Lean-checked proof artifacts;
+- durable artifact storage;
+- claim and evidence hashes;
+- verifier-gated `ResearchPackage` construction.
+
+The current finite certificate uses Lean `native_decide` and records its trust class as `NATIVE_DECIDE`. It is not labeled as a pure kernel-reduction proof.
+
+The experiment is finite and constrained. It does not solve the asymptotic parent problem. Its novelty status is `UNCHECKED`.
+
+### Resumable assisted-proof trial
+
+The generic proof core was also tested on a structurally different finite problem after the proof core had been frozen.
+
+The autonomous run reached `ACTIONABLE_HANDOFF` with its existing proof state preserved and a specific unresolved obligation.
+
+A human supplied a counting lemma. ResearchGPT checked the lemma, imported it into the same proof session, reduced the remaining obligation, and completed the finite proof.
+
+This exercises a useful failure mode for long-running agents: preserve completed work, identify the actual bottleneck, ask for narrowly scoped help, validate the response, and continue from the same checkpoint.
+
+## Provenance and replay
+
+ResearchGPT records state and artifacts so a completed result can be inspected after execution.
+
+The runtime tracks:
+
+- artifact hashes;
+- producer information;
+- verifier results;
+- claim-to-evidence relationships;
+- task dependencies;
+- execution records;
+- research package versions.
+
+This makes it possible to distinguish a generated result from a verified result and to reconstruct how accepted evidence reached the final package.
+
+The paper pipeline consumes verified research packages separately from research execution. Paper generation does not get authority to change the evidence that produced the package.
 
 ## Repository map
 
-- `src/` — research state, artifact storage, verification, provenance, and the finite MVP trial.
-- `tools/proofbench/` — proof engineering, `ProofSession`, and semantic-adapter interfaces.
-- `tools/proofbench/adapters/` — problem-domain adapters that sit above the generic proof core.
-- `tools/proofbench/public/` — committed public proof tasks and Lean specifications.
-- `scripts/` — supported local launchers, including the MVP trial and proof orchestrator.
-- `tests/` — focused behavioral and integrity checks.
+- `src/`: research state, scheduling, artifact storage, verification, provenance, packages, and runtime logic.
+- `tools/proofbench/`: proof sessions, proof search, formal verification, and semantic adapter interfaces.
+- `tools/proofbench/adapters/`: problem-domain adapters above the generic proof core.
+- `tools/proofbench/public/`: committed public proof tasks and Lean specifications.
+- `scripts/`: supported command-line entrypoints.
+- `skills/`: executable research capabilities and skill definitions.
+- `tests/`: architecture, behavior, verification, and integrity checks.
+- `.github/workflows/`: CI and research workflow entrypoints.
 
-The domain dependency direction is deliberately one-way: problem-specific task or generated skill → `ProofSemanticAdapter` → generic `ProofSession` and proof-engineering core. The generic session does not depend on an Erdős-specific implementation.
+For proof tasks, the dependency direction is:
 
-## Limitations
+```text
+problem-specific task or generated skill
+    -> ProofSemanticAdapter
+    -> generic ProofSession
+    -> proof-engineering core
+```
 
-- Formal verification establishes the encoded proposition under the verifier's trust model, not novelty or scientific importance.
-- Executable checks validate implementations and finite computations, not arbitrary scientific truth.
-- Provenance establishes lineage, not correctness by itself; SAT/CNF artifacts are advisory unless backed by a checked certificate.
-- Current finite Lean certificates may use `NATIVE_DECIDE`.
-- Research completeness is not guaranteed, and local model quality affects autonomous progress.
-- Human or stronger-model assistance may sometimes be required; there is no claim of autonomous publishable-paper generation, novelty, or a solution to open Erdős problems.
+## Project boundaries
+
+Formal verification checks the proposition that was encoded. It does not establish mathematical novelty or scientific importance.
+
+Executable tests validate the implementation and finite computations they exercise. Provenance records lineage and does not establish correctness by itself.
+
+Research completeness depends on the objective, available evidence, available tools, and model quality.
+
+Some runs can require human reasoning or a stronger model before they continue. ResearchGPT records that boundary and preserves the verified state that already exists.
+
+The public MVP demonstrates the orchestration and verification architecture on bounded tasks. It does not claim a general solution to autonomous scientific research.

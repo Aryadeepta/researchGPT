@@ -1,4 +1,4 @@
-# H2 — resource-bounded directed path
+# H2 - resource-bounded directed path
 
 Implement JSON-stdin/stdout `solution.py`. Input contains `n_states`, `start`,
 `goal`, `max_steps`, `budget`, and edge triples `[src,dst,cost]`. A found

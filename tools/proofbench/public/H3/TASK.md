@@ -1,4 +1,4 @@
-# H3 — turnpike reconstruction
+# H3 - turnpike reconstruction
 
 Implement JSON-stdin/stdout `solution.py`. Given `n` and pairwise absolute
 distances with multiplicity, return found=true and sorted, distinct integer

@@ -1,4 +1,4 @@
-# H5 — quadratic-checksum subset certificate
+# H5 - quadratic-checksum subset certificate
 
 Implement JSON-stdin/stdout `solution.py`. Return exactly k distinct in-range
 indices selecting values totaling `target`, whose selected squared-value sum is

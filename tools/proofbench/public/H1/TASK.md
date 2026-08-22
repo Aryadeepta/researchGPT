@@ -1,4 +1,4 @@
-# H1 — bounded additive certificate
+# H1 - bounded additive certificate
 
 Write `solution.py`, reading one JSON object from stdin and writing one JSON
 object to stdout. Return `{"found":true,"indices":[...]}` exactly when a
